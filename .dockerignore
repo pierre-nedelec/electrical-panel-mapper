@@ -1,0 +1,57 @@
+# Documentation
+README.md
+ADDON_README.md
+docs/
+*.md
+
+# Git
+.git/
+.gitignore
+
+# Node modules (will be installed in container)
+electrical-panel-backend/node_modules/
+electrical-panel-mapper/node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+electrical-panel-mapper/build/
+dist/
+
+# Environment and config
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+electrical-panel-mapper/coverage/
+electrical-panel-mapper/src/tests/
+electrical-panel-backend/test/
+
+# Scripts that aren't needed in container
+start.sh
+start.bat
+workflow-test.js
+
+# Development databases
+electrical-panel-backend/database.db
+electrical-panel-backend/*.db
+
+# Lock files (using npm ci)
+# Keep package-lock.json for reproducible builds 

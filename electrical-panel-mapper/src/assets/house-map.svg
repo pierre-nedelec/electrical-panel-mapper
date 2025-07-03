@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<svg
+   width="123.85403mm"
+   height="106.27711mm"
+   viewBox="0 0 123.85403 106.27711"
+   version="1.1"
+   id="svg5"
+   xmlns="http://www.w3.org/2000/svg"
+>
+  <defs
+     id="defs2" />
+  <g
+     id="layer1"
+     transform="translate(-17.454123,-42.722888)">
+    <rect
+       id="room_1"
+       width="63.83688"
+       height="55.192307"
+       x="17.954123"
+       y="43.222889" />
+    <rect
+       id="room_2"
+       width="58.517147"
+       height="48.542633"
+       x="81.791"
+       y="43.222889"
+       ry="24.271317"
+       rx="0" />
+    <rect
+       id="room_3"
+       width="59.017147"
+       height="56.734482"
+       x="81.791"
+       y="91.765511"
+       ry="24.271317"
+       rx="0.50000381" />
+  </g>
+</svg>

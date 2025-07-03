@@ -1,0 +1,42 @@
+# Dependencies
+electrical-panel-backend/node_modules/
+electrical-panel-mapper/node_modules/
+
+# Production builds
+electrical-panel-mapper/build/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Databases
+electrical-panel-backend/database.db
+electrical-panel-backend/*.db
+
+# Testing
+electrical-panel-mapper/coverage/
+test-data/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Lock files (keep package-lock.json for reproducible builds)
+*.lock
+!package-lock.json 

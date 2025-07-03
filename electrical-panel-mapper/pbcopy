@@ -1,0 +1,39 @@
+src
+├── App.js
+├── App.test.js
+├── assets
+│   └── house-map.svg
+├── components
+│   ├── BreakerPanel.js
+│   ├── EntitiesPanel.js
+│   ├── EntityDetailsDialog.js
+│   ├── EntityPlacement.js
+│   ├── EntityPreview.js
+│   ├── EntitySelector.js
+│   ├── HamburgerIcon.css
+│   ├── HamburgerIcon.js
+│   ├── MainScreen.js
+│   ├── Map.js
+│   ├── MapContainer.js
+│   ├── MapEditor.js
+│   ├── MapViewer.js
+│   ├── MenuBar.js
+│   ├── RoomsPanel.js
+│   ├── ZoomButtonGroup.js
+│   └── ZoomControls.js
+├── config.js
+├── hooks
+│   ├── usePanZoom.js
+│   ├── useSvgTheming.js
+│   └── useZoom.js
+├── index.css
+├── index.js
+├── logo.svg
+├── reportWebVitals.js
+├── setupTests.js
+├── theme.js
+└── utils
+    ├── applySvgTheming.js
+    └── entityUtils.js
+
+5 directories, 32 files

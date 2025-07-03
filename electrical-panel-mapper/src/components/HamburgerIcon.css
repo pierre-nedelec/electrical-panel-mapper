@@ -1,0 +1,30 @@
+/* src/components/HamburgerIcon.css */
+.hamburger-icon {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 24px;
+    height: 24px;
+  }
+  
+  .hamburger-icon .bar1,
+  .hamburger-icon .bar2,
+  .hamburger-icon .bar3 {
+    width: 100%;
+    height: 3px;
+    background-color: white;
+    transition: 0.4s;
+  }
+  
+  .hamburger-icon.open .bar1 {
+    transform: rotate(-45deg) translate(-5px, 5px);
+  }
+  
+  .hamburger-icon.open .bar2 {
+    opacity: 0;
+  }
+  
+  .hamburger-icon.open .bar3 {
+    transform: rotate(45deg) translate(-5px, -5px);
+  }
+  

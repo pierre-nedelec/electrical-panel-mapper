@@ -1,0 +1,30 @@
+name: "Electrical Panel Mapper"
+version: "1.0.0"
+slug: "electrical_panel_mapper"
+description: "Professional electrical panel documentation and floor plan mapping tool"
+url: "https://github.com/your-username/electrical-panel"
+arch:
+  - armhf
+  - armv7
+  - aarch64
+  - amd64
+  - i386
+startup: application
+boot: auto
+ports:
+  8080/tcp: 8080
+ports_description:
+  8080/tcp: "Web interface for Electrical Panel Mapper"
+webui: "http://[HOST]:[PORT:8080]"
+map:
+  - addon_config:/data
+init: false
+options:
+  log_level: "info"
+  database_backup: true
+  backup_interval: 24
+schema:
+  log_level: list(trace|debug|info|notice|warning|error|fatal)
+  database_backup: bool
+  backup_interval: int(1,168)
+image: "local/electrical-panel-mapper" 
