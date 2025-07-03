@@ -1,11 +1,15 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install required dependencies
+# Install required dependencies including build tools for native modules
 RUN apk add --no-cache \
     nodejs \
     npm \
     sqlite \
+    python3 \
+    make \
+    g++ \
+    && ln -sf python3 /usr/bin/python \
     && rm -rf /var/cache/apk/*
 
 # Set working directory
