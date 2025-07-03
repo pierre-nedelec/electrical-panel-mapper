@@ -1,5 +1,5 @@
 # Multi-stage build for Home Assistant Add-on
-ARG BUILD_FROM
+ARG BUILD_FROM=alpine:3.18
 FROM node:18-alpine AS frontend-builder
 
 # Set working directory for frontend build
@@ -14,8 +14,8 @@ RUN npm ci
 # Copy frontend source code
 COPY electrical-panel-mapper/ ./
 
-# Build the React application with memory limit
-RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build
+# Build the React application with memory limit and OpenSSL legacy support
+RUN NODE_OPTIONS="--max-old-space-size=1024 --openssl-legacy-provider" npm run build
 
 # Final stage - Runtime container  
 FROM $BUILD_FROM
