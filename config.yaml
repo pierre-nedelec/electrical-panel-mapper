@@ -24,5 +24,4 @@ options:
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
   database_backup: bool
-  backup_interval: int(1,168)
-image: "local/electrical-panel-mapper" 
+  backup_interval: int(1,168) 
