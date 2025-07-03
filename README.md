@@ -1,6 +1,19 @@
-# Electrical Panel Mapper
+# Electrical Panel Mapper - Home Assistant Add-on Repository
 
-A React-based application for creating floor plans and mapping electrical components to rooms.
+Professional electrical panel documentation and floor plan mapping tool for Home Assistant.
+
+## Installation
+
+Add this repository to your Home Assistant instance:
+
+1. **In Home Assistant** → **Supervisor** → **Add-on Store**
+2. **Click menu (⋮)** in top right → **Repositories**
+3. **Add repository URL**: `https://github.com/pierre-nedelec/electrical-panel-mapper`
+4. **Refresh** the add-on store
+5. **Find "Electrical Panel Mapper"** in the new repository section
+6. **Install** and enjoy! 🔌
+
+## About the Add-on
 
 ## Features
 
