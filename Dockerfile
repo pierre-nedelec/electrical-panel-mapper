@@ -1,4 +1,5 @@
 # Multi-stage build for Home Assistant Add-on
+ARG BUILD_FROM
 FROM node:18-alpine AS frontend-builder
 
 # Set working directory for frontend build
@@ -16,11 +17,13 @@ COPY electrical-panel-mapper/ ./
 # Build the React application
 RUN npm run build
 
-# Final stage - Runtime container
-FROM node:18-alpine AS runtime
+# Final stage - Runtime container  
+FROM $BUILD_FROM
 
 # Install required system dependencies
 RUN apk add --no-cache \
+    nodejs \
+    npm \
     sqlite \
     && rm -rf /var/cache/apk/*
 
