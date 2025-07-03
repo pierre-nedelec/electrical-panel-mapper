@@ -1,43 +1,48 @@
+# Multi-stage build for Home Assistant Add-on
 ARG BUILD_FROM
+FROM node:18-alpine AS frontend-builder
+
+# Set working directory for frontend build
+WORKDIR /app/frontend
+
+# Copy frontend package files
+COPY electrical-panel-mapper/package*.json ./
+
+# Install frontend dependencies
+RUN npm ci
+
+# Copy frontend source code
+COPY electrical-panel-mapper/ ./
+
+# Build the React application with memory limit
+RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build
+
+# Final stage - Runtime container  
 FROM $BUILD_FROM
 
-# Install required dependencies including build tools for native modules
+# Install required system dependencies
 RUN apk add --no-cache \
     nodejs \
     npm \
     sqlite \
-    python3 \
-    make \
-    g++ \
-    && ln -sf python3 /usr/bin/python \
     && rm -rf /var/cache/apk/*
 
-# Set working directory
+# Create app directory
 WORKDIR /app
 
-# Copy package files first (for better caching)
-COPY electrical-panel-backend/package*.json ./backend/
-COPY electrical-panel-mapper/package*.json ./frontend/
+# Copy backend package files
+COPY electrical-panel-backend/package*.json ./
 
-# Install backend dependencies (smaller, faster)
-WORKDIR /app/backend
+# Install backend dependencies
 RUN npm ci --only=production
 
-# Install frontend dependencies and build
-WORKDIR /app/frontend  
-RUN npm ci \
-    && NODE_OPTIONS="--max-old-space-size=1024" npm run build \
-    && npm prune --production
+# Copy backend source code
+COPY electrical-panel-backend/ ./
 
-# Copy application code
-WORKDIR /app
-COPY electrical-panel-backend/ ./backend/
-COPY electrical-panel-mapper/ ./frontend/
+# Copy built frontend from builder stage
+COPY --from=frontend-builder /app/frontend/build ./public
 
-# Copy built frontend to backend public directory
-RUN cp -r frontend/build backend/public
-
-# Create data directory
+# Create data directory for SQLite database
 RUN mkdir -p /data
 
 # Set proper permissions
@@ -45,9 +50,10 @@ RUN addgroup -g 1000 appuser && \
     adduser -D -s /bin/sh -u 1000 -G appuser appuser && \
     chown -R appuser:appuser /app /data
 
+# Switch to non-root user
 USER appuser
 
-# Expose port
+# Expose port for Home Assistant
 EXPOSE 8080
 
 # Environment variables
@@ -60,5 +66,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
 
 # Start command
-WORKDIR /app/backend
 CMD ["node", "index.js"] 
