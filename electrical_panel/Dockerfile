@@ -1,48 +1,39 @@
-# Multi-stage build for Home Assistant Add-on
 ARG BUILD_FROM
-FROM node:18-alpine AS frontend-builder
-
-# Set working directory for frontend build
-WORKDIR /app/frontend
-
-# Copy frontend package files
-COPY electrical-panel-mapper/package*.json ./
-
-# Install frontend dependencies
-RUN npm ci --only=production
-
-# Copy frontend source code
-COPY electrical-panel-mapper/ ./
-
-# Build the React application
-RUN npm run build
-
-# Final stage - Runtime container  
 FROM $BUILD_FROM
 
-# Install required system dependencies
+# Install required dependencies
 RUN apk add --no-cache \
     nodejs \
     npm \
     sqlite \
     && rm -rf /var/cache/apk/*
 
-# Create app directory
+# Set working directory
 WORKDIR /app
 
-# Copy backend package files
-COPY electrical-panel-backend/package*.json ./
+# Copy package files first (for better caching)
+COPY electrical-panel-backend/package*.json ./backend/
+COPY electrical-panel-mapper/package*.json ./frontend/
 
-# Install backend dependencies
+# Install backend dependencies (smaller, faster)
+WORKDIR /app/backend
 RUN npm ci --only=production
 
-# Copy backend source code
-COPY electrical-panel-backend/ ./
+# Install frontend dependencies and build
+WORKDIR /app/frontend  
+RUN npm ci \
+    && NODE_OPTIONS="--max-old-space-size=1024" npm run build \
+    && npm prune --production
 
-# Copy built frontend from builder stage
-COPY --from=frontend-builder /app/frontend/build ./public
+# Copy application code
+WORKDIR /app
+COPY electrical-panel-backend/ ./backend/
+COPY electrical-panel-mapper/ ./frontend/
 
-# Create data directory for SQLite database
+# Copy built frontend to backend public directory
+RUN cp -r frontend/build backend/public
+
+# Create data directory
 RUN mkdir -p /data
 
 # Set proper permissions
@@ -50,10 +41,9 @@ RUN addgroup -g 1000 appuser && \
     adduser -D -s /bin/sh -u 1000 -G appuser appuser && \
     chown -R appuser:appuser /app /data
 
-# Switch to non-root user
 USER appuser
 
-# Expose port for Home Assistant
+# Expose port
 EXPOSE 8080
 
 # Environment variables
@@ -66,4 +56,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
 
 # Start command
+WORKDIR /app/backend
 CMD ["node", "index.js"] 
