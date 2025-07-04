@@ -25,6 +25,9 @@ RUN apk add --no-cache \
     nodejs \
     npm \
     sqlite \
+    python3 \
+    make \
+    g++ \
     && rm -rf /var/cache/apk/*
 
 # Create app directory

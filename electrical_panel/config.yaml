@@ -1,7 +1,7 @@
 name: "Electrical Panel Mapper"
-version: "1.0.4"
+description: "Interactive electrical panel mapping and circuit management tool"
+version: "1.0.5"
 slug: "electrical_panel"
-description: "Professional electrical panel documentation and floor plan mapping tool"
 url: "https://github.com/pierre-nedelec/electrical-panel-mapper"
 arch:
   - armhf
