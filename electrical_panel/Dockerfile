@@ -26,6 +26,7 @@ RUN apk add --no-cache \
     npm \
     sqlite \
     python3 \
+    py3-setuptools \
     make \
     g++ \
     && rm -rf /var/cache/apk/*
