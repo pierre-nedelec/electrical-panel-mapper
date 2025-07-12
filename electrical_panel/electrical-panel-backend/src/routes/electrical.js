@@ -474,7 +474,7 @@ router.post('/components', (req, res) => {
   const db = getDatabase();
   const {
     floor_plan_id,
-    type,
+    type, // Accept but ignore this field (for backward compatibility)
     x,
     y,
     room_id,
@@ -487,13 +487,12 @@ router.post('/components', (req, res) => {
   } = req.body;
 
   const stmt = db.prepare(`
-    INSERT INTO entities (floor_plan_id, type, x, y, room_id, device_type_id, label, amperage, gfci, properties, wattage)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO entities (floor_plan_id, x, y, room_id, device_type_id, label, amperage, gfci, properties, wattage)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
     floor_plan_id,
-    type,
     x,
     y,
     room_id,
@@ -558,7 +557,7 @@ router.put('/components/:id', (req, res) => {
   const db = getDatabase();
   const id = req.params.id;
   const {
-    type,
+    type, // Accept but ignore this field (for backward compatibility)
     x,
     y,
     room_id,
@@ -573,12 +572,11 @@ router.put('/components/:id', (req, res) => {
 
   const stmt = db.prepare(`
     UPDATE entities
-    SET type = ?, x = ?, y = ?, room_id = ?, device_type_id = ?, label = ?, amperage = ?, gfci = ?, properties = ?, circuit_id = ?, wattage = ?
+    SET x = ?, y = ?, room_id = ?, device_type_id = ?, label = ?, amperage = ?, gfci = ?, properties = ?, circuit_id = ?, wattage = ?
     WHERE id = ?
   `);
 
   stmt.run(
-    type,
     x,
     y,
     room_id,

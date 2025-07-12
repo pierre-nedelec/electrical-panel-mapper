@@ -7,6 +7,10 @@ const entitiesRoutes = require('./entities');
 const roomsRoutes = require('./rooms');
 const floorPlansRoutes = require('./floorPlans');
 const electricalRoutes = require('./electrical');
+const deviceTypesRoutes = require('./deviceTypes');
+const loadCalculationsRoutes = require('./loadCalculations');
+const codeComplianceRoutes = require('./codeCompliance');
+const materialsRoutes = require('./materials');
 
 const router = express.Router();
 
@@ -169,5 +173,9 @@ router.use('/entities', entitiesRoutes);
 router.use('/rooms', roomsRoutes);
 router.use('/floor-plans', floorPlansRoutes);
 router.use('/electrical', electricalRoutes);
+router.use('/device-types', deviceTypesRoutes);
+router.use('/load-calculations', loadCalculationsRoutes);
+router.use('/code-compliance', codeComplianceRoutes);
+router.use('/materials', materialsRoutes);
 
 module.exports = router; 

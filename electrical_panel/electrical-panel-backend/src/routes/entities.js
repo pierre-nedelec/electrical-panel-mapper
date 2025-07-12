@@ -13,9 +13,6 @@ const router = express.Router();
  *         id:
  *           type: integer
  *           description: Unique identifier
- *         type:
- *           type: string
- *           description: Entity type
  *         x:
  *           type: number
  *           description: X coordinate
