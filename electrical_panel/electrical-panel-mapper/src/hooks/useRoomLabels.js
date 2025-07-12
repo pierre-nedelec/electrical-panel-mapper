@@ -32,7 +32,7 @@ const useRoomLabels = (svgRef) => {
 
   useEffect(() => {
     // Fetch initial room labels from the backend and populate the state
-    fetch(`${config.BACKEND_URL}/rooms`)
+    fetch(`${config.BACKEND_URL}/api/rooms`)
       .then((response) => response.json())
       .then((data) => {
         const labels = {};
@@ -54,7 +54,7 @@ const useRoomLabels = (svgRef) => {
   };
 
   const saveRoomLabel = (rectId, roomName) => {
-    fetch(`${config.BACKEND_URL}/rooms`, {
+    fetch(`${config.BACKEND_URL}/api/rooms`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

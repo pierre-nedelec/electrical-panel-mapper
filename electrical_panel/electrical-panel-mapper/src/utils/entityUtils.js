@@ -3,7 +3,7 @@ import config from '../config';
 
 export const fetchEntities = async () => {
   try {
-    const response = await fetch(`${config.BACKEND_URL}/entities`);
+    const response = await fetch(`${config.BACKEND_URL}/api/entities`);
     if (!response.ok) throw new Error('Error fetching entities');
     return await response.json();
   } catch (error) {
@@ -14,7 +14,7 @@ export const fetchEntities = async () => {
 
 export const saveEntity = async (newEntity) => {
   try {
-    const response = await fetch(`${config.BACKEND_URL}/entities`, {
+    const response = await fetch(`${config.BACKEND_URL}/api/entities`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

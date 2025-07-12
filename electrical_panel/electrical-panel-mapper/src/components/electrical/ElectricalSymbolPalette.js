@@ -7,6 +7,7 @@ import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ElectricalServicesIcon from '@mui/icons-material/ElectricalServices';
 import CableIcon from '@mui/icons-material/Cable';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import config from '../../config';
 
 const ElectricalSymbolPalette = ({ onSelect, selected, size = "small" }) => {
   const [symbols, setSymbols] = useState([]);
@@ -59,7 +60,7 @@ const ElectricalSymbolPalette = ({ onSelect, selected, size = "small" }) => {
     // Fetch electrical symbols from backend
     const fetchSymbols = async () => {
       try {
-        const response = await fetch('/electrical/symbols');
+        const response = await fetch(`${config.BACKEND_URL}/api/electrical/symbols`);
         if (response.ok) {
           const backendSymbols = await response.json();
           // Merge backend symbols with default symbols

@@ -15,12 +15,12 @@ function EntitiesPanel({ toggleDarkMode, darkMode }) {
 
   // Fetch entities and rooms from the backend on mount
   useEffect(() => {
-    fetch(`${config.BACKEND_URL}/entities`)
+    fetch(`${config.BACKEND_URL}/api/entities`)
       .then(response => response.json())
       .then(data => setEntities(data))
       .catch(err => console.error('Error fetching entities:', err));
 
-    fetch(`${config.BACKEND_URL}/rooms`)
+    fetch(`${config.BACKEND_URL}/api/rooms`)
       .then(response => response.json())
       .then(data => setRooms(data))
       .catch(err => console.error('Error fetching rooms:', err));
@@ -67,7 +67,7 @@ function EntitiesPanel({ toggleDarkMode, darkMode }) {
   };
 
   const handleDeleteEntity = (id) => {
-    fetch(`${config.BACKEND_URL}/entities/${id}`, {
+    fetch(`${config.BACKEND_URL}/api/entities/${id}`, {
       method: 'DELETE',
     })
       .then(() => {

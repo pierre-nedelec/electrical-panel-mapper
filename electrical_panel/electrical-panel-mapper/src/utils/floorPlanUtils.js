@@ -3,7 +3,7 @@ import config from '../config';
 
 export const saveFloorPlanToServer = async (floorPlan) => {
   try {
-    const response = await fetch(`${config.BACKEND_URL}/floor-plans`, {
+    const response = await fetch(`${config.BACKEND_URL}/api/floor-plans`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -21,7 +21,7 @@ export const saveFloorPlanToServer = async (floorPlan) => {
 
 export const loadFloorPlansFromServer = async () => {
   try {
-    const response = await fetch(`${config.BACKEND_URL}/floor-plans`);
+    const response = await fetch(`${config.BACKEND_URL}/api/floor-plans`);
     if (!response.ok) throw new Error('Failed to load floor plans');
     return await response.json();
   } catch (error) {
@@ -32,7 +32,7 @@ export const loadFloorPlansFromServer = async () => {
 
 export const deleteFloorPlanFromServer = async (id) => {
   try {
-    const response = await fetch(`${config.BACKEND_URL}/floor-plans/${id}`, {
+    const response = await fetch(`${config.BACKEND_URL}/api/floor-plans/${id}`, {
       method: 'DELETE',
     });
     

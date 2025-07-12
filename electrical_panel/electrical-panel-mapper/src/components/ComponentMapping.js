@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Box, 
-  Typography, 
+import {
+  Box,
+  Typography,
   Container,
   Grid,
   Card,
@@ -45,6 +45,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import config from '../config';
 
 // Import electrical components
 import ElectricalComponentLayer from './electrical/ElectricalComponentLayer';
@@ -53,52 +54,52 @@ import ComponentPropertiesDialog from './electrical/ComponentPropertiesDialog';
 import LoadAnalysisPanel from './electrical/LoadAnalysisPanel';
 import { useComponentPlacement, ComponentPreview } from './electrical/ComponentPlacement';
 
-const ComponentMapping = ({ 
-  project, 
-  onComplete, 
-  onBackToPanels 
+const ComponentMapping = ({
+  project,
+  onComplete,
+  onBackToPanels
 }) => {
   // Floor plan and room data
   const [rooms, setRooms] = useState([]);
-  
+
   // Panel and circuit data from previous step
   const [panels, setPanels] = useState([]);
   const [circuits, setCircuits] = useState([]);
   const [selectedPanel, setSelectedPanel] = useState(null);
-  
+
   // Component placement state
   const [electricalComponents, setElectricalComponents] = useState([]);
   const [selectedElectricalTool, setSelectedElectricalTool] = useState(null);
   const [selectedComponent, setSelectedComponent] = useState(null);
-  
+
   // UI state
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewBox, setViewBox] = useState("0 0 800 600");
   const [contextMenu, setContextMenu] = useState(null);
-  
+
   // Component properties dialog
   const [propertiesDialog, setPropertiesDialog] = useState(false);
   const [editingComponent, setEditingComponent] = useState(null);
-  
+
   // Edit mode toggle
   const [editMode, setEditMode] = useState(false);
-  
+
   // Component dragging state
   const [isDraggingComponent, setIsDraggingComponent] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  
+
   // Quick toolbar state
   const [showQuickToolbar, setShowQuickToolbar] = useState(true);
-  
+
   // Load analysis is now embedded in the drawer
-  
+
   // Circuit filtering state
   const [circuitFilter, setCircuitFilter] = useState(null); // null = show all, 'unassigned' = unassigned only, circuit.id = specific circuit
 
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  
+
   const svgRef = useRef(null);
 
   // Initialize component placement hook
@@ -159,40 +160,40 @@ const ComponentMapping = ({
   // Mouse wheel zoom handler
   const handleWheel = useCallback((event) => {
     event.preventDefault();
-    
+
     // Zoom factor: smaller for more precise control
     const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
     const newZoom = Math.max(0.1, Math.min(5, zoomLevel * zoomFactor));
-    
+
     // Get mouse position relative to SVG
     const svgRect = svgRef.current.getBoundingClientRect();
     const mouseX = (event.clientX - svgRect.left) / svgRect.width;
     const mouseY = (event.clientY - svgRect.top) / svgRect.height;
-    
+
     // Calculate new pan offset to zoom towards mouse position
     const currentViewBox = viewBox.split(' ').map(Number);
     const [vbX, vbY, vbW, vbH] = currentViewBox;
-    
+
     // Mouse position in SVG coordinates
     const svgMouseX = vbX + mouseX * vbW;
     const svgMouseY = vbY + mouseY * vbH;
-    
+
     // Calculate new viewBox dimensions
     const baseWidth = 800;
     const baseHeight = 600;
     const newVbW = baseWidth / newZoom;
     const newVbH = baseHeight / newZoom;
-    
+
     // Adjust viewBox to keep mouse position stationary
     const newVbX = svgMouseX - mouseX * newVbW;
     const newVbY = svgMouseY - mouseY * newVbH;
-    
+
     // Convert viewBox coordinates back to panOffset for consistency
     const newPanOffset = {
       x: -newVbX * newZoom,
       y: -newVbY * newZoom
     };
-    
+
     setZoomLevel(newZoom);
     setPanOffset(newPanOffset);
     setViewBox(`${newVbX} ${newVbY} ${newVbW} ${newVbH}`);
@@ -241,11 +242,11 @@ const ComponentMapping = ({
     const handleKeyPress = (event) => {
       // Only respond to shortcuts when not typing in inputs
       if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-      
+
       const key = event.key.toUpperCase();
       let matchedTool = null;
       const allTools = [...quickTools, ...canvasControls];
-      
+
       // Handle special keys
       if (key === '+' || key === '=') {
         matchedTool = allTools.find(t => t.id === 'zoomIn');
@@ -264,7 +265,7 @@ const ComponentMapping = ({
         // Normal shortcut keys
         matchedTool = allTools.find(t => t.shortcut === key);
       }
-      
+
       if (matchedTool) {
         event.preventDefault();
         handleToolSelect(matchedTool);
@@ -291,9 +292,9 @@ const ComponentMapping = ({
   const loadAllData = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Load floor plan data (rooms)
-      const floorPlanResponse = await fetch(`http://localhost:3001/floor-plans/${project.id}`);
+      const floorPlanResponse = await fetch(`${config.BACKEND_URL}/api/floor-plans/${project.id}`);
       if (floorPlanResponse.ok) {
         const floorPlan = await floorPlanResponse.json();
         setRooms(floorPlan.rooms || []);
@@ -301,10 +302,10 @@ const ComponentMapping = ({
           setViewBox(floorPlan.view_box);
         }
       }
-      
+
       // Load panels configured in previous step
       let panelsData = [];
-      const panelsResponse = await fetch(`http://localhost:3001/electrical-panels?floor_plan_id=${project.id}`);
+      const panelsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/panels?floor_plan_id=${project.id}`);
       if (panelsResponse.ok) {
         panelsData = await panelsResponse.json();
         setPanels(Array.isArray(panelsData) ? panelsData : []);
@@ -312,12 +313,12 @@ const ComponentMapping = ({
           setSelectedPanel(panelsData[0]);
         }
       }
-      
+
       // Load circuits for all panels in this floor plan
       if (panelsData.length > 0) {
         const allCircuits = [];
         for (const panel of panelsData) {
-          const circuitsResponse = await fetch(`http://localhost:3001/electrical-circuits?panel_id=${panel.id}`);
+          const circuitsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/circuits?panel_id=${panel.id}`);
           if (circuitsResponse.ok) {
             const circuitsData = await circuitsResponse.json();
             allCircuits.push(...(Array.isArray(circuitsData) ? circuitsData : []));
@@ -325,14 +326,14 @@ const ComponentMapping = ({
         }
         setCircuits(allCircuits);
       }
-      
+
       // Load existing electrical components
-      const componentsResponse = await fetch(`http://localhost:3001/floor-plans/${project.id}/electrical/components`);
+      const componentsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/components?floor_plan_id=${project.id}`);
       if (componentsResponse.ok) {
         const componentsData = await componentsResponse.json();
         setElectricalComponents(Array.isArray(componentsData) ? componentsData : []);
       }
-      
+
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -354,20 +355,20 @@ const ComponentMapping = ({
         id: `temp-${Date.now()}`,
       };
       setElectricalComponents(prev => [...prev, tempComponent]);
-      
+
       // Save to backend
-      const response = await fetch(`http://localhost:3001/floor-plans/${project.id}/electrical/components`, {
+      const response = await fetch(`${config.BACKEND_URL}/api/electrical/components`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(componentData)
       });
-      
+
       if (response.ok) {
         const savedComponent = await response.json();
         // Update with real ID from backend
-        setElectricalComponents(prev => 
-          prev.map(comp => 
-            comp.id === tempComponent.id 
+        setElectricalComponents(prev =>
+          prev.map(comp =>
+            comp.id === tempComponent.id
               ? { ...savedComponent, ...componentData }
               : comp
           )
@@ -378,7 +379,7 @@ const ComponentMapping = ({
         clearPreview();
       } else {
         // Remove from local state if save failed
-        setElectricalComponents(prev => 
+        setElectricalComponents(prev =>
           prev.filter(comp => comp.id !== tempComponent.id)
         );
         console.error('Failed to save component');
@@ -390,7 +391,7 @@ const ComponentMapping = ({
 
   // Handle SVG mouse events
   const handleSvgClick = (event) => {
-    
+
     if (selectedElectricalTool && previewComponent) {
       handleComponentPlacement(event, selectedElectricalTool, handleElectricalComponentPlaced);
     } else {
@@ -405,9 +406,9 @@ const ComponentMapping = ({
 
   const handleSvgMouseDown = (event) => {
     // Check if clicking on a draggable electrical component
-    const isElectricalComponent = event.target.closest('.electrical-component') || 
+    const isElectricalComponent = event.target.closest('.electrical-component') ||
                                   event.target.closest('.electrical-component-layer');
-    
+
     // Allow panning everywhere except on electrical components when no tool is selected
     if (!isElectricalComponent && !selectedElectricalTool) {
       // Start panning
@@ -425,13 +426,13 @@ const ComponentMapping = ({
       // Calculate pan delta in screen coordinates
       const deltaX = event.clientX - lastPanPoint.x;
       const deltaY = event.clientY - lastPanPoint.y;
-      
+
       // Update pan offset and use existing viewBox update system
       const newOffset = {
         x: panOffset.x + deltaX,
         y: panOffset.y + deltaY
       };
-      
+
       setPanOffset(newOffset);
       updateViewBox(zoomLevel, newOffset);
       setLastPanPoint({ x: event.clientX, y: event.clientY });
@@ -459,18 +460,18 @@ const ComponentMapping = ({
   // Component drag handlers
   const handleComponentMouseDown = (event, component) => {
     if (!editMode) return; // Only allow dragging in edit mode
-    
+
     event.stopPropagation();
     setSelectedComponent(component);
     setIsDraggingComponent(true);
-    
+
     // Calculate offset from mouse to component center
     const svgRect = svgRef.current.getBoundingClientRect();
     const svgPoint = {
       x: (event.clientX - svgRect.left) / zoomLevel,
       y: (event.clientY - svgRect.top) / zoomLevel
     };
-    
+
     setDragOffset({
       x: svgPoint.x - component.x,
       y: svgPoint.y - component.y
@@ -479,18 +480,18 @@ const ComponentMapping = ({
 
   const handleComponentDrag = (event) => {
     if (!isDraggingComponent || !selectedComponent || !editMode) return;
-    
+
     const svgRect = svgRef.current.getBoundingClientRect();
     const svgPoint = {
       x: (event.clientX - svgRect.left) / zoomLevel,
       y: (event.clientY - svgRect.top) / zoomLevel
     };
-    
+
     const newPosition = {
       x: svgPoint.x - dragOffset.x,
       y: svgPoint.y - dragOffset.y
     };
-    
+
     // Update component position in local state
     setElectricalComponents(prev =>
       prev.map(comp =>
@@ -499,7 +500,7 @@ const ComponentMapping = ({
           : comp
       )
     );
-    
+
     // Update selected component
     setSelectedComponent(prev => ({
       ...prev,
@@ -510,17 +511,17 @@ const ComponentMapping = ({
 
   const handleComponentDragEnd = async () => {
     if (!isDraggingComponent || !selectedComponent) return;
-    
+
     setIsDraggingComponent(false);
-    
+
     // Save new position to backend
     try {
-      const response = await fetch(`http://localhost:3001/electrical/components/${selectedComponent.id}`, {
+      const response = await fetch(`${config.BACKEND_URL}/api/electrical/components/${selectedComponent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(selectedComponent)
       });
-      
+
       if (!response.ok) {
         console.error('Failed to save component position');
       }
@@ -564,10 +565,10 @@ const ComponentMapping = ({
 
   const handleDeleteComponent = async (component) => {
     try {
-      const response = await fetch(`http://localhost:3001/entities/${component.id}`, {
+      const response = await fetch(`${config.BACKEND_URL}/api/entities/${component.id}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         setElectricalComponents(prev => prev.filter(c => c.id !== component.id));
         setSelectedComponent(null);
@@ -587,10 +588,10 @@ const ComponentMapping = ({
 
   // Utility function to determine which room a component is in based on position
   const getComponentRoom = (x, y) => {
-    return rooms.find(room => 
-      x >= room.x && 
-      x <= room.x + room.width && 
-      y >= room.y && 
+    return rooms.find(room =>
+      x >= room.x &&
+      x <= room.x + room.width &&
+      y >= room.y &&
       y <= room.y + room.height
     );
   };
@@ -598,7 +599,7 @@ const ComponentMapping = ({
   // Handle component property updates
   const handleComponentSave = async (updatedComponent) => {
     try {
-      const response = await fetch(`http://localhost:3001/electrical/components/${updatedComponent.id}`, {
+      const response = await fetch(`${config.BACKEND_URL}/api/electrical/components/${updatedComponent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedComponent)
@@ -607,9 +608,9 @@ const ComponentMapping = ({
       if (response.ok) {
         const savedComponent = await response.json();
         // Update local state with the saved component data from backend
-        setElectricalComponents(prev => 
-          prev.map(comp => 
-            comp.id === updatedComponent.id 
+        setElectricalComponents(prev =>
+          prev.map(comp =>
+            comp.id === updatedComponent.id
               ? savedComponent
               : comp
           )
@@ -654,7 +655,7 @@ const ComponentMapping = ({
           </IconButton>
         </Box>
       </Box>
-      
+
       <Box sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Load Analysis Section - Always Visible */}
         <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -662,7 +663,7 @@ const ComponentMapping = ({
             <CalculateIcon sx={{ mr: 1 }} />
             <Typography variant="h6">Load Analysis</Typography>
           </Box>
-          
+
           {/* Embed LoadAnalysisPanel content directly */}
           <LoadAnalysisPanel
             rooms={rooms}
@@ -679,7 +680,7 @@ const ComponentMapping = ({
           <Typography variant="h6" gutterBottom>
             Component Tools
           </Typography>
-          
+
           {rooms.length === 0 ? (
             <Alert severity="warning" sx={{ mb: 2 }}>
               No rooms found. Please go back and create floor plan rooms first.
@@ -689,24 +690,24 @@ const ComponentMapping = ({
               <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
                 Component tools are available in the Quick Toolbar on the left. Use this panel for component overview and panel information.
               </Typography>
-              
+
               {selectedElectricalTool && (
                 <Alert severity="info" sx={{ mt: 2 }}>
                   Click on the floor plan to place {selectedElectricalTool.name}
                 </Alert>
               )}
-              
+
               {!selectedElectricalTool && electricalComponents.length > 0 && (
                 <Alert severity="info" sx={{ mt: 2 }}>
                   Double-click any component on the map to edit its properties
                 </Alert>
               )}
-              
+
               <Box sx={{ mt: 3 }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Electrical Panels:
                 </Typography>
-                
+
                 {panels.length === 0 ? (
                   <Alert severity="warning">
                     No panels configured. Please go back to Panel Setup.
@@ -723,21 +724,21 @@ const ComponentMapping = ({
                     ))}</List>
                 )}
               </Box>
-              
+
               <Box sx={{ mt: 3 }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Component Summary:
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <Chip 
-                    label={`${status.totalComponents} Components`} 
-                    color="primary" 
-                    size="small" 
+                  <Chip
+                    label={`${status.totalComponents} Components`}
+                    color="primary"
+                    size="small"
                   />
-                  <Chip 
-                    label={`${panels.length} Panels`} 
-                    color="secondary" 
-                    size="small" 
+                  <Chip
+                    label={`${panels.length} Panels`}
+                    color="secondary"
+                    size="small"
                   />
                 </Box>
               </Box>
@@ -778,8 +779,8 @@ const ComponentMapping = ({
   return (
     <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Full-page SVG Editor */}
-      <Box 
-        sx={{ 
+      <Box
+        sx={{
           position: 'relative',
           flexGrow: 1,
           overflow: 'hidden',
@@ -791,10 +792,10 @@ const ComponentMapping = ({
                   width="100%"
                   height="100%"
                   viewBox={viewBox}
-                  style={{ 
-                    cursor: isPanDragging ? 'grabbing' 
-                           : selectedElectricalTool ? 'crosshair' 
-                           : 'grab' 
+                  style={{
+                    cursor: isPanDragging ? 'grabbing'
+                           : selectedElectricalTool ? 'crosshair'
+                           : 'grab'
                   }}
                   onMouseMove={handleSvgMouseMoveForPan}
                   onMouseDown={handleSvgMouseDown}
@@ -810,7 +811,7 @@ const ComponentMapping = ({
                     </pattern>
                   </defs>
                   <rect x="-2000" y="-2000" width="5000" height="5000" fill="url(#grid)" />
-                  
+
                   {/* Rooms */}
                   <g className="rooms-layer">
                     {rooms.map(room => (
@@ -832,7 +833,7 @@ const ComponentMapping = ({
                           fontSize="12"
                           fill="#1976d2"
                           fontWeight="500"
-                          style={{ 
+                          style={{
                             pointerEvents: 'none',
                             userSelect: 'none',
                             WebkitUserSelect: 'none',
@@ -845,7 +846,7 @@ const ComponentMapping = ({
                       </g>
                     ))}
                   </g>
-                  
+
                   {/* Electrical Components */}
                   <ElectricalComponentLayer
                     components={electricalComponents}
@@ -859,7 +860,7 @@ const ComponentMapping = ({
                     circuits={circuits}
                     circuitFilter={circuitFilter}
                   />
-                  
+
                   {/* Electrical Panels */}
                   {panels.map(panel => (
                     <PanelVisualization
@@ -870,18 +871,18 @@ const ComponentMapping = ({
                       onSelect={() => setSelectedPanel(panel)}
                     />
                   ))}
-                  
+
                   {/* Component Preview */}
                   <ComponentPreview previewComponent={previewComponent} />
                 </svg>
-                
+
                 {/* Floating Tools Button */}
-                <Tooltip 
+                <Tooltip
                   title={
-                    selectedElectricalTool 
-                      ? `${selectedElectricalTool.name} Tool Active - More Tools` 
+                    selectedElectricalTool
+                      ? `${selectedElectricalTool.name} Tool Active - More Tools`
                       : "Open Tool Menu (or use Quick Toolbar on left)"
-                  } 
+                  }
                   placement="left"
                 >
                   <Fab
@@ -897,7 +898,7 @@ const ComponentMapping = ({
                     <MenuIcon />
                   </Fab>
                 </Tooltip>
-                
+
                 {/* Component Toolbar */}
                 <Box
                   sx={{
@@ -924,17 +925,17 @@ const ComponentMapping = ({
                     {quickTools.map((tool) => {
                       const IconComponent = tool.icon;
                       const isActive = selectedElectricalTool?.id === tool.id;
-                        
+
                       return (
-                        <Tooltip 
-                          key={tool.id} 
+                        <Tooltip
+                          key={tool.id}
                           title={`${tool.name} (${tool.shortcut})`}
                           placement="right"
                         >
                           <IconButton
                             size="small"
                             onClick={() => handleToolSelect(tool)}
-                            sx={{ 
+                            sx={{
                               backgroundColor: isActive ? 'primary.main' : 'transparent',
                               color: isActive ? 'primary.contrastText' : 'text.secondary',
                               borderRadius: 1,
@@ -980,7 +981,7 @@ const ComponentMapping = ({
                     <Typography variant="caption" sx={{ display: 'block', mb: 1, fontWeight: 'bold' }}>
                       Circuit Filter
                     </Typography>
-                    
+
                     {/* Main filter buttons */}
                     <Box sx={{ display: 'flex', gap: 0.5, mb: 1 }}>
                       <Chip
@@ -992,7 +993,7 @@ const ComponentMapping = ({
                         clickable
                         sx={{ fontSize: '10px' }}
                       />
-                      
+
                       <Chip
                         label={`Unassigned (${electricalComponents.filter(c => !c.circuit_id).length})`}
                         size="small"
@@ -1003,11 +1004,11 @@ const ComponentMapping = ({
                         sx={{ fontSize: '10px' }}
                       />
                     </Box>
-                    
+
                     {/* Circuit chips in a scrollable container */}
                     {circuits.filter(c => electricalComponents.some(comp => comp.circuit_id === c.id)).length > 0 && (
-                      <Box sx={{ 
-                        maxHeight: 120, 
+                      <Box sx={{
+                        maxHeight: 120,
                         overflow: 'auto',
                         display: 'flex',
                         flexWrap: 'wrap',
@@ -1027,13 +1028,13 @@ const ComponentMapping = ({
                         {circuits.map(circuit => {
                           const componentCount = electricalComponents.filter(c => c.circuit_id === circuit.id).length;
                           if (componentCount === 0) return null;
-                          
+
                           const circuitColors = [
-                            '#FF5722', '#2196F3', '#4CAF50', '#FF9800', '#9C27B0', 
-                            '#607D8B', '#795548', '#F44336', '#3F51B5', '#009688', 
+                            '#FF5722', '#2196F3', '#4CAF50', '#FF9800', '#9C27B0',
+                            '#607D8B', '#795548', '#F44336', '#3F51B5', '#009688',
                             '#FFC107', '#E91E63'
                           ];
-                          
+
                           const getCircuitColor = (circuit) => {
                             if (circuit?.color_code) return circuit.color_code;
                             if (circuit?.breaker_position) {
@@ -1042,10 +1043,10 @@ const ComponentMapping = ({
                             }
                             return '#666666';
                           };
-                          
+
                           const circuitColor = getCircuitColor(circuit);
                           const isActive = circuitFilter === circuit.id;
-                          
+
                           return (
                             <Chip
                               key={circuit.id}
@@ -1054,7 +1055,7 @@ const ComponentMapping = ({
                               variant={isActive ? "filled" : "outlined"}
                               onClick={() => setCircuitFilter(circuit.id)}
                               clickable
-                              sx={{ 
+                              sx={{
                                 fontSize: '10px',
                                 backgroundColor: isActive ? circuitColor : 'transparent',
                                 borderColor: circuitColor,
@@ -1068,10 +1069,10 @@ const ComponentMapping = ({
                                 }
                               }}
                               icon={
-                                <Box sx={{ 
-                                  width: 6, 
-                                  height: 6, 
-                                  borderRadius: '50%', 
+                                <Box sx={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: '50%',
                                   backgroundColor: isActive ? 'white' : circuitColor
                                 }} />
                               }
@@ -1109,20 +1110,20 @@ const ComponentMapping = ({
                       if (tool === 'divider') {
                         return <Box key={index} sx={{ height: '1px', backgroundColor: 'divider', mx: 0.5 }} />;
                       }
-                      
+
                       const IconComponent = tool.icon;
                       const isActive = false;
-                      
+
                       return (
-                        <Tooltip 
-                          key={tool.id} 
+                        <Tooltip
+                          key={tool.id}
                           title={`${tool.name} (${tool.shortcut})`}
                           placement="right"
                         >
                           <IconButton
                             size="small"
                             onClick={() => handleToolAction(tool)}
-                            sx={{ 
+                            sx={{
                               borderRadius: 0,
                               width: 32,
                               height: 32,
@@ -1139,7 +1140,7 @@ const ComponentMapping = ({
                       );
                     })}
                   </Box>
-                  
+
                   {/* Zoom Level Indicator */}
                   <Box
                     sx={{
@@ -1212,7 +1213,7 @@ const ComponentMapping = ({
                       <ArrowForwardIcon />
                     </Fab>
                   </Tooltip>
-                  
+
                   <Tooltip title={editMode ? "Lock Components" : "Edit Components"}>
                     <Fab
                       size="small"
@@ -1270,7 +1271,7 @@ const ComponentMapping = ({
             Delete Component
           </MenuItem>
         ]}
-        
+
         {contextMenu?.type === 'map' && [
           <MenuItem key="paste" onClick={handleContextMenuClose} disabled>
             Paste Component
@@ -1282,4 +1283,4 @@ const ComponentMapping = ({
   );
 };
 
-export default ComponentMapping; 
+export default ComponentMapping;

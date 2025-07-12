@@ -16,7 +16,7 @@ function BreakerPanel({ toggleDarkMode, darkMode }) {
 
   // Fetch breakers from the backend on mount
   useEffect(() => {
-    fetch(`${config.BACKEND_URL}/breakers`)
+    fetch(`${config.BACKEND_URL}/api/electrical/circuits`)
       .then(response => response.json())
       .then(data => setBreakers(data))
       .catch(err => console.error('Error fetching breakers:', err));
@@ -58,7 +58,7 @@ function BreakerPanel({ toggleDarkMode, darkMode }) {
 
   const handleSaveBreaker = () => {
     const method = editingBreaker ? 'PUT' : 'POST';
-    const url = editingBreaker ? `${config.BACKEND_URL}/breakers/${editingBreaker}` : `${config.BACKEND_URL}/breakers`;
+    const url = editingBreaker ? `${config.BACKEND_URL}/api/electrical/circuits/${editingBreaker}` : `${config.BACKEND_URL}/api/electrical/circuits`;
 
     fetch(url, {
       method,
@@ -80,7 +80,7 @@ function BreakerPanel({ toggleDarkMode, darkMode }) {
   };
 
   const handleDeleteBreaker = (id) => {
-    fetch(`${config.BACKEND_URL}/breakers/${id}`, {
+    fetch(`${config.BACKEND_URL}/api/electrical/circuits/${id}`, {
       method: 'DELETE',
     })
       .then(() => {

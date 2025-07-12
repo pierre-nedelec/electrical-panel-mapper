@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Box, 
-  Typography, 
-  Card, 
-  CardContent, 
-  Button, 
+import {
+  Container,
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Button,
   Stepper,
   Step,
   StepLabel,
@@ -33,6 +33,7 @@ import {
   CheckCircle as CheckIcon,
   PlayArrow as PlayIcon
 } from '@mui/icons-material';
+import config from '../config';
 
 const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) => {
   const [savedProjects, setSavedProjects] = useState([]);
@@ -47,7 +48,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
 
   const loadSavedProjects = async () => {
     try {
-      const response = await fetch('http://localhost:3001/floor-plans');
+      const response = await fetch(`${config.BACKEND_URL}/api/floor-plans`);
       if (response.ok) {
         const projects = await response.json();
         // Add project status analysis
@@ -71,49 +72,41 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
 
   const analyzeProjectStatus = async (project) => {
     try {
-      // Check what's been completed
-      const hasRooms = project.rooms_data && JSON.parse(project.rooms_data).length > 0;
-      
-      // Check for panels - only if project has been saved to backend
-      let panels = [];
-      let panelCount = 0;
+      // Check for electrical panels
       let hasPanels = false;
-      
-      if (project.id && typeof project.id === 'number') {
-        try {
-          const panelsResponse = await fetch(`http://localhost:3001/electrical-panels?floor_plan_id=${project.id}`);
-          if (panelsResponse.ok) {
-            panels = await panelsResponse.json();
-            panelCount = Array.isArray(panels) ? panels.length : 0;
-            hasPanels = panelCount > 0;
-          }
-        } catch (error) {
-          // Silently handle API errors for new projects
-          console.warn('Could not fetch panels for project', project.id, error);
+      let panelCount = 0;
+      try {
+        const panelsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/panels?floor_plan_id=${project.id}`);
+        if (panelsResponse.ok) {
+          const panels = await panelsResponse.json();
+          panelCount = panels.length;
+          hasPanels = panelCount > 0;
         }
+      } catch (error) {
+        console.error('Error checking panels:', error);
       }
-      
-      // Check for components - only if project has been saved to backend
-      let componentCount = 0;
+
+      // Check for electrical components
       let hasComponents = false;
-      
-      if (project.id && typeof project.id === 'number') {
-        try {
-          const componentsResponse = await fetch(`http://localhost:3001/floor-plans/${project.id}/electrical/components`);
-          if (componentsResponse.ok) {
-            const components = await componentsResponse.json();
-            componentCount = Array.isArray(components) ? components.length : 0;
-            hasComponents = componentCount > 0;
-          }
-        } catch (error) {
-          // Silently handle API errors for new projects
-          console.warn('Could not fetch components for project', project.id, error);
+      let componentCount = 0;
+      try {
+        const componentsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/components?floor_plan_id=${project.id}`);
+        if (componentsResponse.ok) {
+          const components = await componentsResponse.json();
+          componentCount = components.length;
+          hasComponents = componentCount > 0;
         }
+      } catch (error) {
+        console.error('Error checking components:', error);
       }
-      
+
+      // Check for rooms (basic floor plan setup)
+      const hasRooms = project.svg_content && project.svg_content.length > 0;
+
+      // Determine current step
       let step = 1;
       let complete = false;
-      
+
       if (!hasRooms) {
         step = 1; // Floor plan setup
       } else if (!hasPanels) {
@@ -124,7 +117,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
         step = 3;
         complete = true; // All steps completed
       }
-      
+
       return {
         step,
         complete,
@@ -136,11 +129,11 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
       };
     } catch (error) {
       // Return safe defaults for any errors
-      return { 
-        step: 1, 
-        complete: false, 
-        hasRooms: false, 
-        hasPanels: false, 
+      return {
+        step: 1,
+        complete: false,
+        hasRooms: false,
+        hasPanels: false,
         hasComponents: false,
         panelCount: 0,
         componentCount: 0
@@ -150,9 +143,9 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
 
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
-    
+
     try {
-      const response = await fetch('http://localhost:3001/floor-plans', {
+      const response = await fetch(`${config.BACKEND_URL}/api/floor-plans`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -162,7 +155,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
           svg_content: ''
         })
       });
-      
+
       if (response.ok) {
         const newProject = await response.json();
         onStartProject({ ...newProject, status: { step: 1, complete: false } });
@@ -178,7 +171,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
       };
       onStartProject(newProject);
     }
-    
+
     setShowNewProjectDialog(false);
     setNewProjectName('');
   };
@@ -205,14 +198,14 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
     if (status.complete) {
       return <Chip icon={<CheckIcon />} label="Complete" color="success" size="small" />;
     }
-    
+
     return (
-      <Chip 
-        icon={getStepIcon(status.step)} 
-        label={`Step ${status.step}: ${getStepLabel(status.step)}`} 
-        color="primary" 
+      <Chip
+        icon={getStepIcon(status.step)}
+        label={`Step ${status.step}: ${getStepLabel(status.step)}`}
+        color="primary"
         variant="outlined"
-        size="small" 
+        size="small"
       />
     );
   };
@@ -235,7 +228,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
         <Typography variant="h6" color="textSecondary" sx={{ mb: 3 }}>
           Map your home's electrical systems step by step
         </Typography>
-        
+
         {/* Workflow Steps */}
         <Card sx={{ maxWidth: 600, mx: 'auto', mb: 4 }}>
           <CardContent>
@@ -290,7 +283,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
               <Typography variant="h5" gutterBottom>
                 Your Projects
               </Typography>
-              
+
               {savedProjects.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: 3 }}>
                   <Typography color="textSecondary">
@@ -334,7 +327,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
                         >
                           {project.status?.complete ? 'View' : 'Continue'}
                         </Button>
-                        <IconButton 
+                        <IconButton
                           size="small"
                           onClick={() => onEditProject(project)}
                         >
@@ -345,7 +338,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
                   ))}
                 </List>
               )}
-              
+
               {savedProjects.length > 5 && (
                 <Box sx={{ textAlign: 'center', mt: 2 }}>
                   <Button variant="text" size="small">
@@ -359,8 +352,8 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
       </Grid>
 
       {/* Create Project Dialog */}
-      <Dialog 
-        open={showNewProjectDialog} 
+      <Dialog
+        open={showNewProjectDialog}
         onClose={() => setShowNewProjectDialog(false)}
         maxWidth="sm"
         fullWidth
@@ -387,7 +380,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
           <Button onClick={() => setShowNewProjectDialog(false)}>
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={handleCreateProject}
             variant="contained"
             disabled={!newProjectName.trim()}
@@ -400,4 +393,4 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
   );
 };
 
-export default ProjectDashboard; 
+export default ProjectDashboard;

@@ -46,11 +46,12 @@ import {
   ArrowBack as BackIcon,
   Warning as WarningIcon
 } from '@mui/icons-material';
+import config from '../config';
 
-const PanelConfiguration = ({ 
-  project, 
-  onProceedToMapping, 
-  onBackToFloorPlan 
+const PanelConfiguration = ({
+  project,
+  onProceedToMapping,
+  onBackToFloorPlan
 }) => {
   const [panels, setPanels] = useState([]);
   const [circuits, setCircuits] = useState([]);
@@ -100,7 +101,7 @@ const PanelConfiguration = ({
   ];
 
   const circuitColors = [
-    '#4CAF50', '#2196F3', '#FF9800', '#F44336', '#9C27B0', 
+    '#4CAF50', '#2196F3', '#FF9800', '#F44336', '#9C27B0',
     '#00BCD4', '#FFEB3B', '#795548', '#607D8B', '#E91E63',
     '#8BC34A', '#3F51B5', '#FF5722', '#009688', '#FFC107'
   ];
@@ -111,19 +112,19 @@ const PanelConfiguration = ({
 
   const loadPanelData = async () => {
     if (!project?.id) return;
-    
+
     try {
       // Load panels for this floor plan
-      const panelsResponse = await fetch(`http://localhost:3001/electrical-panels?floor_plan_id=${project.id}`);
+      const panelsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/panels?floor_plan_id=${project.id}`);
       if (panelsResponse.ok) {
         const panelsData = await panelsResponse.json();
         const panelsArray = Array.isArray(panelsData) ? panelsData : [];
         setPanels(panelsArray);
-        
+
         // Load circuits for each panel
         const allCircuits = [];
         for (const panel of panelsArray) {
-          const circuitsResponse = await fetch(`http://localhost:3001/electrical-circuits?panel_id=${panel.id}`);
+          const circuitsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/circuits?panel_id=${panel.id}`);
           if (circuitsResponse.ok) {
             const panelCircuits = await circuitsResponse.json();
             const circuitsArray = Array.isArray(panelCircuits) ? panelCircuits : [];
@@ -131,7 +132,7 @@ const PanelConfiguration = ({
           }
         }
         setCircuits(allCircuits);
-        
+
         if (panelsArray.length > 0 && !selectedPanel) {
           setSelectedPanel(panelsArray[0]);
         }
@@ -164,12 +165,12 @@ const PanelConfiguration = ({
     };
 
     try {
-      const url = editingPanel 
-        ? `http://localhost:3001/electrical-panels/${editingPanel.id}`
-        : 'http://localhost:3001/electrical-panels';
-      
+      const url = editingPanel
+        ? `${config.BACKEND_URL}/api/electrical/panels/${editingPanel.id}`
+        : `${config.BACKEND_URL}/api/electrical/panels`;
+
       const method = editingPanel ? 'PUT' : 'POST';
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -182,14 +183,14 @@ const PanelConfiguration = ({
           const affectedCircuits = getSelectedPanelCircuits().filter(
             c => c.breaker_position > panelForm.total_positions
           );
-          
+
           if (affectedCircuits.length > 0) {
             // Show confirmation dialog instead of browser alert
             setValidationError(`Warning: Reducing panel size will remove ${affectedCircuits.length} circuits in positions ${affectedCircuits.map(c => c.breaker_position).join(', ')}.`);
             return;
           }
         }
-        
+
         loadPanelData();
         setShowPanelDialog(false);
         setEditingPanel(null);
@@ -210,20 +211,20 @@ const PanelConfiguration = ({
         setValidationError('Double-pole breakers require two positions to be specified');
         return;
       }
-      
+
       const pos1 = parseInt(doublePolePositions.first);
       const pos2 = parseInt(doublePolePositions.second);
-      
+
       if (pos1 === pos2) {
         setValidationError('Double-pole breakers must use two different positions');
         return;
       }
-      
+
       // Check both positions are available
       const conflictingCircuits = getSelectedPanelCircuits().filter(c => {
         if (editingCircuit && c.id === editingCircuit.id) return false;
         // Check if either position conflicts with existing circuit's primary or secondary position
-        return c.breaker_position === pos1 || c.breaker_position === pos2 || 
+        return c.breaker_position === pos1 || c.breaker_position === pos2 ||
                c.secondary_position === pos1 || c.secondary_position === pos2;
       });
 
@@ -231,7 +232,7 @@ const PanelConfiguration = ({
         setValidationError(`Position conflict with existing circuit: ${conflictingCircuits[0].circuit_label}`);
         return;
       }
-      
+
       // Use the first position as the primary position for the circuit
       const position = pos1;
     } else {
@@ -271,12 +272,12 @@ const PanelConfiguration = ({
     };
 
     try {
-      const url = editingCircuit 
-        ? `http://localhost:3001/electrical-circuits/${editingCircuit.id}`
-        : 'http://localhost:3001/electrical-circuits';
-      
+      const url = editingCircuit
+        ? `${config.BACKEND_URL}/api/electrical/circuits/${editingCircuit.id}`
+        : `${config.BACKEND_URL}/api/electrical/circuits`;
+
       const method = editingCircuit ? 'PUT' : 'POST';
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -285,7 +286,7 @@ const PanelConfiguration = ({
 
       if (response.ok) {
         await loadPanelData();
-        
+
         if (saveAndAddNew && !editingCircuit) {
           // For Save & Add Another, we need to reset the form with the next available position
           // Calculate the next available position based on the circuit we just added
@@ -294,7 +295,7 @@ const PanelConfiguration = ({
           if (isDoublePole && parseInt(doublePolePositions.second)) {
             nextUsedPositions.add(parseInt(doublePolePositions.second));
           }
-          
+
           // Find next available position
           let nextAvailable = null;
           for (let i = 1; i <= selectedPanel.total_positions; i++) {
@@ -303,7 +304,7 @@ const PanelConfiguration = ({
               break;
             }
           }
-          
+
           // Reset form with next available position
           setCircuitForm({
             breaker_position: nextAvailable ? nextAvailable.toString() : '',
@@ -313,7 +314,7 @@ const PanelConfiguration = ({
             wire_gauge: '12 AWG',
             color_code: circuitColors[Math.floor(Math.random() * circuitColors.length)]
           });
-          
+
           // Reset double-pole positions
           let nextAvailable2 = null;
           for (let i = nextAvailable + 1; i <= selectedPanel.total_positions; i++) {
@@ -322,10 +323,10 @@ const PanelConfiguration = ({
               break;
             }
           }
-          
-          setDoublePolePositions({ 
-            first: nextAvailable ? nextAvailable.toString() : '', 
-            second: nextAvailable2 ? nextAvailable2.toString() : '' 
+
+          setDoublePolePositions({
+            first: nextAvailable ? nextAvailable.toString() : '',
+            second: nextAvailable2 ? nextAvailable2.toString() : ''
           });
           setValidationError('');
         } else {
@@ -351,7 +352,7 @@ const PanelConfiguration = ({
     if (!deleteConfirmCircuit) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/electrical-circuits/${deleteConfirmCircuit.id}`, {
+      const response = await fetch(`${config.BACKEND_URL}/api/electrical/circuits/${deleteConfirmCircuit.id}`, {
         method: 'DELETE'
       });
 
@@ -379,13 +380,13 @@ const PanelConfiguration = ({
     try {
       // First delete all circuits in this panel
       for (const circuit of panelCircuits) {
-        await fetch(`http://localhost:3001/electrical-circuits/${circuit.id}`, {
+        await fetch(`${config.BACKEND_URL}/api/electrical/circuits/${circuit.id}`, {
           method: 'DELETE'
         });
       }
 
       // Then delete the panel
-      const response = await fetch(`http://localhost:3001/electrical-panels/${deleteConfirmPanel.id}`, {
+      const response = await fetch(`${config.BACKEND_URL}/api/electrical/panels/${deleteConfirmPanel.id}`, {
         method: 'DELETE'
       });
 
@@ -420,7 +421,7 @@ const PanelConfiguration = ({
     // Get fresh available positions (important for "Save & Add New")
     const availablePositions = getAvailablePositions();
     const firstAvailable = availablePositions[0];
-    
+
     setCircuitForm({
       breaker_position: firstAvailable ? firstAvailable.toString() : '',
       circuit_label: '',
@@ -429,13 +430,13 @@ const PanelConfiguration = ({
       wire_gauge: '12 AWG',
       color_code: circuitColors[Math.floor(Math.random() * circuitColors.length)]
     });
-    
+
     // Reset double-pole positions with first two available positions
     const firstDoublePole = availablePositions[0];
     const secondDoublePole = availablePositions[1];
-    setDoublePolePositions({ 
-      first: firstDoublePole ? firstDoublePole.toString() : '', 
-      second: secondDoublePole ? secondDoublePole.toString() : '' 
+    setDoublePolePositions({
+      first: firstDoublePole ? firstDoublePole.toString() : '',
+      second: secondDoublePole ? secondDoublePole.toString() : ''
     });
     setValidationError('');
   };
@@ -463,7 +464,7 @@ const PanelConfiguration = ({
       wire_gauge: circuit.wire_gauge,
       color_code: circuit.color_code
     });
-    
+
     // Set double-pole positions if applicable
     if (circuit.breaker_type === 'double' || circuit.breaker_type === 'gfci_double') {
       setDoublePolePositions({
@@ -473,7 +474,7 @@ const PanelConfiguration = ({
     } else {
       setDoublePolePositions({ first: '', second: '' });
     }
-    
+
     setShowCircuitDialog(true);
   };
 
@@ -486,7 +487,7 @@ const PanelConfiguration = ({
     getSelectedPanelCircuits().forEach(circuit => {
       // Add the primary position
       usedPositions.add(circuit.breaker_position);
-      
+
       // Add the secondary position for double-pole breakers
       if (circuit.secondary_position) {
         usedPositions.add(circuit.secondary_position);
@@ -497,16 +498,16 @@ const PanelConfiguration = ({
 
   const getAvailablePositions = () => {
     if (!selectedPanel) return [];
-    
+
     const used = getUsedBreakerPositions();
     const available = [];
-    
+
     for (let i = 1; i <= selectedPanel.total_positions; i++) {
       if (!used.includes(i)) {
         available.push(i);
       }
     }
-    
+
     return available;
   };
 
@@ -518,7 +519,7 @@ const PanelConfiguration = ({
     const panelCircuits = circuits.filter(c => c.panel_id === panel.id);
     // Each circuit uses one position slot, regardless of breaker type
     const usedPositions = panelCircuits.length;
-    
+
     return {
       used: usedPositions,
       total: panel.total_positions,
@@ -549,7 +550,7 @@ const PanelConfiguration = ({
             <StepLabel>Component Mapping</StepLabel>
           </Step>
         </Stepper>
-        
+
         <Typography variant="h4" component="h1" gutterBottom align="center">
           Electrical Panel Configuration
         </Typography>
@@ -574,7 +575,7 @@ const PanelConfiguration = ({
                   Add Panel
                 </Button>
               </Box>
-              
+
               {!Array.isArray(panels) || panels.length === 0 ? (
                 <Alert severity="info" sx={{ mt: 2 }}>
                   No panels configured yet. Add your first electrical panel to get started.
@@ -584,11 +585,11 @@ const PanelConfiguration = ({
                   {Array.isArray(panels) && panels.map((panel) => {
                     const util = getPanelUtilization(panel);
                     return (
-                      <ListItem 
-                        key={panel.id} 
+                      <ListItem
+                        key={panel.id}
                         selected={selectedPanel?.id === panel.id}
                         onClick={() => setSelectedPanel(panel)}
-                        sx={{ 
+                        sx={{
                           cursor: 'pointer',
                           border: selectedPanel?.id === panel.id ? '2px solid' : '1px solid',
                           borderColor: selectedPanel?.id === panel.id ? 'primary.main' : 'divider',
@@ -681,17 +682,17 @@ const PanelConfiguration = ({
                         const secondaryCircuit = getSelectedPanelCircuits().find(c => c.secondary_position === position);
                         const displayCircuit = circuit || secondaryCircuit;
                         const isSecondaryPosition = !circuit && secondaryCircuit;
-                        
+
                         return (
-                          <TableRow key={position} sx={{ 
+                          <TableRow key={position} sx={{
                             backgroundColor: displayCircuit ? 'action.selected' : 'inherit'
                           }}>
                             <TableCell>
-                              <Chip 
-                                label={isSecondaryPosition ? `${position}*` : position} 
-                                size="small" 
+                              <Chip
+                                label={isSecondaryPosition ? `${position}*` : position}
+                                size="small"
                                 color={displayCircuit ? "primary" : "default"}
-                                style={{ 
+                                style={{
                                   backgroundColor: displayCircuit?.color_code,
                                   color: displayCircuit ? 'white' : undefined
                                 }}
@@ -755,7 +756,7 @@ const PanelConfiguration = ({
         >
           Back to Floor Plan
         </Button>
-        
+
         <Button
           endIcon={<NextIcon />}
           onClick={onProceedToMapping}
@@ -772,8 +773,8 @@ const PanelConfiguration = ({
       </Box>
 
       {/* Panel Configuration Dialog */}
-      <Dialog 
-        open={showPanelDialog} 
+      <Dialog
+        open={showPanelDialog}
         onClose={() => setShowPanelDialog(false)}
         maxWidth="sm"
         fullWidth
@@ -791,7 +792,7 @@ const PanelConfiguration = ({
               sx={{ mb: 3 }}
               placeholder="e.g., Main Panel, Sub Panel 1, Garage Panel"
             />
-            
+
             <Grid container spacing={2}>
               <Grid item xs={6}>
                 <FormControl fullWidth>
@@ -808,7 +809,7 @@ const PanelConfiguration = ({
                   </Select>
                 </FormControl>
               </Grid>
-              
+
               <Grid item xs={6}>
                 <FormControl fullWidth>
                   <InputLabel id="total-positions-label">Total Positions</InputLabel>
@@ -825,7 +826,7 @@ const PanelConfiguration = ({
                 </FormControl>
               </Grid>
             </Grid>
-            
+
             {editingPanel && panelForm.total_positions < editingPanel.total_positions && (
               <Alert severity="warning" sx={{ mt: 2 }}>
                 <Typography variant="body2">
@@ -833,7 +834,7 @@ const PanelConfiguration = ({
                 </Typography>
               </Alert>
             )}
-            
+
             {validationError && (
               <Alert severity="error" sx={{ mt: 2 }}>
                 {validationError}
@@ -853,8 +854,8 @@ const PanelConfiguration = ({
       </Dialog>
 
       {/* Circuit Configuration Dialog */}
-      <Dialog 
-        open={showCircuitDialog} 
+      <Dialog
+        open={showCircuitDialog}
         onClose={() => setShowCircuitDialog(false)}
         maxWidth="sm"
         fullWidth
@@ -874,20 +875,20 @@ const PanelConfiguration = ({
                 onChange={(e) => {
                   const newBreakerType = e.target.value;
                   const availablePositions = getAvailablePositions();
-                  
+
                   // Update breaker type
                   setCircuitForm({
-                    ...circuitForm, 
+                    ...circuitForm,
                     breaker_type: newBreakerType,
                     // Reset breaker position when changing types
                     breaker_position: availablePositions[0] ? availablePositions[0].toString() : ''
                   });
-                  
+
                   // Set appropriate positions for double-pole breakers
                   if (newBreakerType === 'double' || newBreakerType === 'gfci_double') {
-                    setDoublePolePositions({ 
-                      first: availablePositions[0] ? availablePositions[0].toString() : '', 
-                      second: availablePositions[1] ? availablePositions[1].toString() : '' 
+                    setDoublePolePositions({
+                      first: availablePositions[0] ? availablePositions[0].toString() : '',
+                      second: availablePositions[1] ? availablePositions[1].toString() : ''
                     });
                   } else {
                     setDoublePolePositions({ first: '', second: '' });
@@ -953,7 +954,7 @@ const PanelConfiguration = ({
                     </Select>
                   </FormControl>
                 </Grid>
-                
+
                 <Grid item xs={6}>
                   <FormControl fullWidth>
                     <InputLabel id="second-position-label">Second Position</InputLabel>
@@ -981,7 +982,7 @@ const PanelConfiguration = ({
                 </Grid>
               </Grid>
             )}
-            
+
             {/* Circuit Label */}
             <TextField
               fullWidth
@@ -991,7 +992,7 @@ const PanelConfiguration = ({
               sx={{ mb: 3 }}
               placeholder="e.g., Kitchen Outlets, Living Room Lights (optional)"
             />
-            
+
             {/* Circuit Properties */}
             <Grid container spacing={2} sx={{ mb: 2 }}>
               <Grid item xs={4}>
@@ -1004,7 +1005,7 @@ const PanelConfiguration = ({
                   inputProps={{ min: 15, max: 50 }}
                 />
               </Grid>
-              
+
               <Grid item xs={4}>
                 <FormControl fullWidth>
                   <InputLabel id="wire-gauge-label">Wire Gauge</InputLabel>
@@ -1020,7 +1021,7 @@ const PanelConfiguration = ({
                   </Select>
                 </FormControl>
               </Grid>
-              
+
               <Grid item xs={4}>
                 <FormControl fullWidth>
                   <InputLabel id="color-label">Color</InputLabel>
@@ -1033,13 +1034,13 @@ const PanelConfiguration = ({
                     {circuitColors.map(color => (
                       <MenuItem key={color} value={color}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Box sx={{ 
-                            width: 20, 
-                            height: 20, 
-                            backgroundColor: color, 
+                          <Box sx={{
+                            width: 20,
+                            height: 20,
+                            backgroundColor: color,
                             border: '1px solid #ccc',
                             borderRadius: '50%',
-                            mr: 1 
+                            mr: 1
                           }} />
                           {color}
                         </Box>
@@ -1049,7 +1050,7 @@ const PanelConfiguration = ({
                 </FormControl>
               </Grid>
             </Grid>
-            
+
             {validationError && (
               <Alert severity="error" sx={{ mt: 2 }}>
                 {validationError}
@@ -1062,17 +1063,17 @@ const PanelConfiguration = ({
             setShowCircuitDialog(false);
             setValidationError('');
           }}>Cancel</Button>
-          
+
           {!editingCircuit && (
-            <Button 
-              onClick={() => handleSaveCircuit(true)} 
+            <Button
+              onClick={() => handleSaveCircuit(true)}
               variant="outlined"
               sx={{ mr: 1 }}
             >
               Save & Add Another
             </Button>
           )}
-          
+
           <Button onClick={() => handleSaveCircuit(false)} variant="contained">
             {editingCircuit ? 'Update Circuit' : 'Save Circuit'}
           </Button>
@@ -1080,8 +1081,8 @@ const PanelConfiguration = ({
       </Dialog>
 
       {/* Delete Panel Confirmation Dialog */}
-      <Dialog 
-        open={!!deleteConfirmPanel} 
+      <Dialog
+        open={!!deleteConfirmPanel}
         onClose={() => setDeleteConfirmPanel(null)}
         maxWidth="sm"
         fullWidth
@@ -1111,8 +1112,8 @@ const PanelConfiguration = ({
       </Dialog>
 
       {/* Delete Circuit Confirmation Dialog */}
-      <Dialog 
-        open={!!deleteConfirmCircuit} 
+      <Dialog
+        open={!!deleteConfirmCircuit}
         onClose={() => setDeleteConfirmCircuit(null)}
         maxWidth="sm"
         fullWidth
@@ -1137,4 +1138,4 @@ const PanelConfiguration = ({
   );
 };
 
-export default PanelConfiguration; 
+export default PanelConfiguration;
