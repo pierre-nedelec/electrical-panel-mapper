@@ -1,0 +1,11 @@
+{
+  "watch": ["*.js", "routes/", "config/"],
+  "ext": "js,json",
+  "ignore": ["node_modules/", "logs/", "*.test.js"],
+  "env": {
+    "NODE_ENV": "development",
+    "PORT": "8080",
+    "DATABASE_PATH": "./dev_database.db"
+  },
+  "delay": "1000"
+} 
