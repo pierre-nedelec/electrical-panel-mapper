@@ -1244,6 +1244,45 @@ const FloorPlanDrawer = ({
   // Save electrical component to backend
   const saveElectricalComponent = async (component) => {
     try {
+      // ENHANCED FLOOR PLAN ID DETECTION
+      // Try multiple strategies to get the current floor plan ID
+      let activeFloorPlanId = null;
+      
+      // Strategy 1: Use currentPlan.id if available
+      if (currentPlan?.id) {
+        activeFloorPlanId = currentPlan.id;
+        console.log(`🎯 Using currentPlan.id: ${activeFloorPlanId}`);
+      }
+      
+      // Strategy 2: If currentPlan.id is null, try to get the most recent floor plan
+      if (!activeFloorPlanId) {
+        try {
+          const floorPlansResponse = await fetch(`${config.BACKEND_URL}/api/floor-plans`);
+          if (floorPlansResponse.ok) {
+            const floorPlans = await floorPlansResponse.json();
+            if (floorPlans && floorPlans.length > 0) {
+              // Get the most recently updated floor plan
+              const mostRecentPlan = floorPlans.sort((a, b) => 
+                new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+              )[0];
+              activeFloorPlanId = mostRecentPlan.id;
+              console.log(`🔍 Using most recent floor plan: ${activeFloorPlanId} (${mostRecentPlan.name})`);
+              
+              // Update currentPlan state for future saves
+              setCurrentPlan(mostRecentPlan);
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to fetch floor plans for ID detection:', error);
+        }
+      }
+      
+      // Strategy 3: Final fallback - warn user
+      if (!activeFloorPlanId) {
+        console.error('⚠️ No floor plan ID detected! Component may not persist correctly.');
+        showNotification('Warning: No active floor plan detected. Component may not save properly.', 'warning');
+      }
+
       // Map component data to match backend entities structure
       const entityData = {
         device_type_id: component.device_type_id || getDeviceTypeId(component.type),
@@ -1251,7 +1290,7 @@ const FloorPlanDrawer = ({
         y: component.y,
         breaker_id: component.breaker_id || null,
         room_id: component.room_id || null,
-        floor_plan_id: currentPlan?.id || null,
+        floor_plan_id: activeFloorPlanId, // FIXED: Use detected active floor plan ID
         label: component.label || component.type,
         voltage: component.voltage || 120,
         amperage: component.amperage || 15,
@@ -1260,6 +1299,8 @@ const FloorPlanDrawer = ({
         circuit_id: component.circuit_id || null,
         properties: component.properties || {}
       };
+
+      console.log(`💾 Saving component with floor_plan_id: ${activeFloorPlanId}`, entityData);
 
       const response = await fetch(`${config.BACKEND_URL}/api/entities`, {
         method: 'POST',
@@ -1287,6 +1328,7 @@ const FloorPlanDrawer = ({
         wattage: entityData.wattage,
         gfci: entityData.gfci,
         circuit_id: entityData.circuit_id,
+        floor_plan_id: savedEntity.floor_plan_id, // Include floor_plan_id in return
         properties: entityData.properties
       };
     } catch (error) {
