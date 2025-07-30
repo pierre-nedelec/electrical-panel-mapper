@@ -87,18 +87,45 @@ export const WIRE_CAPACITY = {
 
 /**
  * Calculate the electrical load for a component
- * @param {Object} component - Component with type and properties
+ * @param {Object} component - Component with device_type_id, wattage, and properties
+ * @param {Object} deviceTypesService - Service to get device type info
  * @returns {number} Load in watts
  */
-export function calculateComponentLoad(component) {
-  const { type, properties = {}, wattage } = component;
+export function calculateComponentLoad(component, deviceTypesService = null) {
+  // Debug logging for troubleshooting
+  const debugMode = process.env.NODE_ENV === 'development';
   
-  // Use custom wattage if specified at component level
-  if (wattage && wattage > 0) {
-    return wattage;
+  if (debugMode) {
+    console.log('🔧 calculateComponentLoad:', {
+      id: component.id,
+      type: component.type,
+      wattage: component.wattage,
+      device_type_id: component.device_type_id,
+      properties: component.properties
+    });
+  }
+
+  // Use entity wattage if specified and > 0
+  if (component.wattage && component.wattage > 0) {
+    if (debugMode) console.log(`✅ Using component wattage: ${component.wattage}W`);
+    return component.wattage;
   }
   
-  // Handle specific component types
+  // If deviceTypesService is provided, use device type wattage
+  if (deviceTypesService && component.device_type_id) {
+    const deviceType = deviceTypesService.getDeviceTypeById(component.device_type_id);
+    if (deviceType && deviceType.wattage && deviceType.wattage > 0) {
+      if (debugMode) console.log(`✅ Using device type wattage: ${deviceType.wattage}W`);
+      return deviceType.wattage;
+    }
+  }
+  
+  // Fallback to hardcoded values for backward compatibility
+  const { type, properties = {} } = component;
+  
+  if (debugMode) console.log(`🔄 Using fallback calculation for type: ${type}`);
+  
+  // Handle specific component types using legacy approach
   switch (type) {
     case 'outlet':
       if (properties.kitchen) return COMPONENT_LOADS.outlet.kitchen;
@@ -122,7 +149,9 @@ export function calculateComponentLoad(component) {
       if (properties.wattage) return properties.wattage;
       
       if (properties.appliance_type && COMPONENT_LOADS.appliance[properties.appliance_type]) {
-        return COMPONENT_LOADS.appliance[properties.appliance_type];
+        const applianceLoad = COMPONENT_LOADS.appliance[properties.appliance_type];
+        if (debugMode) console.log(`✅ Using appliance type load: ${applianceLoad}W for ${properties.appliance_type}`);
+        return applianceLoad;
       }
       return 1500; // Default appliance load
       
@@ -130,27 +159,36 @@ export function calculateComponentLoad(component) {
       return COMPONENT_LOADS.panel.main;
       
     default:
-      return properties.wattage || 0;
+      const fallbackLoad = properties.wattage || 0;
+      if (debugMode) console.log(`⚠️ Unknown component type, using fallback: ${fallbackLoad}W`);
+      return fallbackLoad;
   }
 }
 
 /**
  * Calculate total load for a circuit
  * @param {Array} components - Array of components on the circuit
+ * @param {Object} deviceTypesService - Service to get device type info
  * @returns {Object} Load calculation results
  */
-export function calculateCircuitLoad(components) {
+export function calculateCircuitLoad(components, deviceTypesService = null) {
   let totalLoad = 0;
   let lightingLoad = 0;
   let outletLoad = 0;
   let applianceLoad = 0;
   
   components.forEach(component => {
-    const load = calculateComponentLoad(component);
+    const load = calculateComponentLoad(component, deviceTypesService);
     totalLoad += load;
     
     // Categorize loads for demand factor calculations
-    switch (component.type) {
+    // Use device type service to get component type if available
+    let componentType = component.type;
+    if (deviceTypesService && component.device_type_id) {
+      componentType = deviceTypesService.getComponentType(component.device_type_id);
+    }
+    
+    switch (componentType) {
       case 'light':
         lightingLoad += load;
         break;
@@ -176,16 +214,17 @@ export function calculateCircuitLoad(components) {
 /**
  * Calculate circuit capacity and utilization
  * @param {Object} circuit - Circuit with breaker size and components
+ * @param {Object} deviceTypesService - Service to get device type info
  * @returns {Object} Capacity analysis
  */
-export function calculateCircuitCapacity(circuit) {
+export function calculateCircuitCapacity(circuit, deviceTypesService = null) {
   const { amperage = 20, components = [], voltage = 120 } = circuit;
   
   // Calculate total circuit capacity in watts
   const maxCapacity = amperage * voltage;
   
   // Calculate current load
-  const loadData = calculateCircuitLoad(components);
+  const loadData = calculateCircuitLoad(components, deviceTypesService);
   const currentLoad = loadData.totalLoad;
   
   // Calculate utilization percentage

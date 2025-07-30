@@ -14,10 +14,13 @@ RUN npm ci
 # Copy frontend source code
 COPY electrical-panel-mapper/ ./
 
+# Set PUBLIC_URL=. to generate relative paths for ingress compatibility
+ENV PUBLIC_URL=.
+
 # Build the React application with memory limit and OpenSSL legacy support
 RUN NODE_OPTIONS="--max-old-space-size=1024 --openssl-legacy-provider" npm run build
 
-# Final stage - Runtime container  
+# Final stage - Runtime container
 FROM $BUILD_FROM
 
 # Install required system dependencies
@@ -60,14 +63,14 @@ USER appuser
 # Expose port for Home Assistant
 EXPOSE 8080
 
-# Environment variables
+# Environment variables - ensure production mode
 ENV NODE_ENV=production
 ENV DATABASE_PATH=/data/database.db
 ENV PORT=8080
 
-# Health check
+# Health check - check on production port 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
 
 # Start command
-CMD ["node", "index.js"] 
+CMD ["node", "index.js"]

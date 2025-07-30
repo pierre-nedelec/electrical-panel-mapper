@@ -13,33 +13,18 @@ const ElectricalComponentLayer = ({
   visible = true,
   scale = 1,
   circuits = [],
-  circuitFilter = null // null = show all, 'unassigned' = show only unassigned, circuit ID = show only that circuit
+  circuitFilter = null, // null = show all, 'unassigned' = show only unassigned, etc.
+  selectedCircuits = new Set() // For multi-select filtering
 }) => {
   if (!visible || components.length === 0) {
     return null;
   }
 
-  // Filter components based on circuit filter
-  const getFilteredComponents = () => {
-    if (!circuitFilter) {
-      return components; // Show all
-    }
-    
-    if (circuitFilter === 'unassigned') {
-      return components.filter(component => !component.circuit_id);
-    }
-    
-    // Show only components assigned to specific circuit
-    return components.filter(component => component.circuit_id === circuitFilter);
-  };
-
-  const filteredComponents = getFilteredComponents();
-  
+  // Since filtering is now handled in ComponentMapping.js via getFilteredComponents(),
+  // we just render the components we receive at full opacity
   return (
     <g className="electrical-component-layer">
       {components.map((component) => {
-        const isFiltered = filteredComponents.includes(component);
-        
         return (
           <ElectricalComponent
             key={component.id}
@@ -52,7 +37,6 @@ const ElectricalComponentLayer = ({
             editMode={editMode}
             scale={scale}
             circuits={circuits}
-            dimmed={circuitFilter && !isFiltered} // Dim components not matching filter
           />
         );
       })}

@@ -39,6 +39,7 @@ import {
   getLoadColor,
   calculateCircuitCapacity
 } from '../../utils/loadCalculations';
+import CircuitLoadRecap from './CircuitLoadRecap';
 
 const LoadAnalysisPanel = ({ 
   rooms = [], 
@@ -48,7 +49,15 @@ const LoadAnalysisPanel = ({
   open = true,
   embedded = false 
 }) => {
-  const [expandedSection, setExpandedSection] = useState('overview');
+  // Use multiple boolean states instead of single expandedSection to allow multiple accordions open
+  const [expandedSections, setExpandedSections] = useState({
+    overview: false,
+    rooms: false,
+    breakdown: false,
+    circuits: false,
+    compliance: false,
+    circuitRecap: false
+  });
   
   // Calculate comprehensive load analysis
   const loadAnalysis = useMemo(() => {
@@ -60,7 +69,10 @@ const LoadAnalysisPanel = ({
   }, [rooms, components]);
 
   const handleAccordionChange = (panel) => (event, isExpanded) => {
-    setExpandedSection(isExpanded ? panel : false);
+    setExpandedSections(prev => ({
+      ...prev,
+      [panel]: isExpanded
+    }));
   };
 
   const getComplianceIcon = (score) => {
@@ -77,6 +89,10 @@ const LoadAnalysisPanel = ({
 
   if (!open) return null;
 
+  // Check for unassigned components
+  const unassignedComponents = components.filter(c => !c.circuit_id);
+  const totalUnassignedWattage = unassignedComponents.reduce((sum, c) => sum + (c.wattage || 0), 0);
+
   const content = (
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
       {!embedded && (
@@ -86,9 +102,29 @@ const LoadAnalysisPanel = ({
         </Box>
       )}
 
+      {/* Unassigned Components Alert */}
+      {unassignedComponents.length > 0 && (
+        <Alert 
+          severity="info" 
+          sx={{ mb: 2 }}
+          action={
+            <Chip 
+              label={`${unassignedComponents.length} components`}
+              size="small"
+              color="primary"
+            />
+          }
+        >
+          <Typography variant="body2">
+            <strong>{formatLoad(totalUnassignedWattage)}</strong> in unassigned components. 
+            Assign them to circuits for accurate load calculations.
+          </Typography>
+        </Alert>
+      )}
+
       {/* Overview Section */}
       <Accordion 
-        expanded={expandedSection === 'overview'} 
+        expanded={expandedSections.overview} 
         onChange={handleAccordionChange('overview')}
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -142,7 +178,7 @@ const LoadAnalysisPanel = ({
 
       {/* Room Analysis */}
       <Accordion 
-        expanded={expandedSection === 'rooms'} 
+        expanded={expandedSections.rooms} 
         onChange={handleAccordionChange('rooms')}
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -198,7 +234,7 @@ const LoadAnalysisPanel = ({
 
       {/* Load Breakdown */}
       <Accordion 
-        expanded={expandedSection === 'breakdown'} 
+        expanded={expandedSections.breakdown} 
         onChange={handleAccordionChange('breakdown')}
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -258,7 +294,7 @@ const LoadAnalysisPanel = ({
 
       {/* Circuit Recommendations */}
       <Accordion 
-        expanded={expandedSection === 'circuits'} 
+        expanded={expandedSections.circuits} 
         onChange={handleAccordionChange('circuits')}
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -293,7 +329,7 @@ const LoadAnalysisPanel = ({
 
       {/* NEC Compliance */}
       <Accordion 
-        expanded={expandedSection === 'compliance'} 
+        expanded={expandedSections.compliance} 
         onChange={handleAccordionChange('compliance')}
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -335,6 +371,26 @@ const LoadAnalysisPanel = ({
               </Box>
             ))}
           </List>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Circuit Load Recap */}
+      <Accordion 
+        expanded={expandedSections.circuitRecap} 
+        onChange={handleAccordionChange('circuitRecap')}
+      >
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1">⚡ Circuit Load Recap</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <CircuitLoadRecap 
+            circuits={circuits}
+            components={components}
+            onCircuitMergeClick={(lightCircuits) => {
+              console.log('Circuit merge analysis requested for:', lightCircuits);
+              // Could open a dialog or navigate to a circuit optimization view
+            }}
+          />
         </AccordionDetails>
       </Accordion>
     </Box>

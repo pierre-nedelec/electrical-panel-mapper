@@ -661,16 +661,22 @@ const FloorPlanDrawer = ({
       // Save to backend
       const savedComponent = await saveElectricalComponent(componentData);
 
-      // Update with real ID from backend
+      // Update with real ID from backend - FIX: Preserve backend data, only override specific frontend properties
       setElectricalComponents(prev =>
         prev.map(comp =>
           comp.id === localComponent.id
-            ? { ...savedComponent, ...componentData }
+            ? { 
+                ...savedComponent, // Backend data (with proper wattage, circuit_id, etc.)
+                type: componentData.type, // Preserve frontend type
+                x: componentData.x, // Preserve frontend position
+                y: componentData.y,
+                properties: { ...savedComponent.properties, ...componentData.properties } // Merge properties
+              }
             : comp
         )
       );
 
-      showNotification(`${componentData.type} added successfully`, 'success');
+      showNotification(`${componentData.type} added successfully (${savedComponent.wattage}W)`, 'success');
       setSelectedElectricalTool(null);
       clearPreview();
       setHasUnsavedChanges(true);
@@ -717,15 +723,20 @@ const FloorPlanDrawer = ({
         )
       );
 
-      // Update backend
+      // Update backend with all electrical properties
       const updatePayload = {
         label: updatedComponent.label,
-        type: updatedComponent.type,
         x: updatedComponent.x,
         y: updatedComponent.y,
         device_type_id: updatedComponent.device_type_id,
         room_id: updatedComponent.room_id,
-        floor_plan_id: updatedComponent.floor_plan_id
+        floor_plan_id: updatedComponent.floor_plan_id,
+        voltage: updatedComponent.voltage,
+        amperage: updatedComponent.amperage,
+        wattage: updatedComponent.wattage,
+        gfci: updatedComponent.gfci,
+        circuit_id: updatedComponent.circuit_id,
+        properties: updatedComponent.properties
       };
 
       await fetch(`${config.BACKEND_URL}/api/entities/${editingComponent.id}`, {
@@ -1240,7 +1251,14 @@ const FloorPlanDrawer = ({
         y: component.y,
         breaker_id: component.breaker_id || null,
         room_id: component.room_id || null,
-        floor_plan_id: currentPlan?.id || null
+        floor_plan_id: currentPlan?.id || null,
+        label: component.label || component.type,
+        voltage: component.voltage || 120,
+        amperage: component.amperage || 15,
+        wattage: component.wattage || 0,
+        gfci: component.gfci || false,
+        circuit_id: component.circuit_id || null,
+        properties: component.properties || {}
       };
 
       const response = await fetch(`${config.BACKEND_URL}/api/entities`, {
@@ -1263,7 +1281,13 @@ const FloorPlanDrawer = ({
         y: component.y,
         label: component.label || component.type,
         room_id: component.room_id,
-        device_type_id: entityData.device_type_id
+        device_type_id: entityData.device_type_id,
+        voltage: entityData.voltage,
+        amperage: entityData.amperage,
+        wattage: entityData.wattage,
+        gfci: entityData.gfci,
+        circuit_id: entityData.circuit_id,
+        properties: entityData.properties
       };
     } catch (error) {
       console.error('Error saving electrical component:', error);

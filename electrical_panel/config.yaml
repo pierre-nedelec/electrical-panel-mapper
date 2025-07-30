@@ -11,11 +11,8 @@ arch:
   - i386
 startup: application
 boot: auto
-ports:
-  8080/tcp: 8080
-ports_description:
-  8080/tcp: "Web interface for Electrical Panel Mapper"
-webui: "http://[HOST]:[PORT:8080]"
+ingress: true
+ingress_port: 8080
 init: false
 options:
   log_level: "info"
@@ -24,4 +21,4 @@ options:
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
   database_backup: bool
-  backup_interval: int(1,168) 
+  backup_interval: int(1,168)

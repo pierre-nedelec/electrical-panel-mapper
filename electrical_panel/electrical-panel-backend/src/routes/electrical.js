@@ -567,53 +567,110 @@ router.put('/components/:id', (req, res) => {
     gfci,
     properties = {},
     circuit_id,
-    wattage = 0
+    wattage = 0,
+    voltage
   } = req.body;
 
-  const stmt = db.prepare(`
-    UPDATE entities
-    SET x = ?, y = ?, room_id = ?, device_type_id = ?, label = ?, amperage = ?, gfci = ?, properties = ?, circuit_id = ?, wattage = ?
-    WHERE id = ?
-  `);
+  // Log the incoming request
+  console.log(`📝 PUT /api/electrical/components/${id} from ${req.ip}`);
+  console.log(`📦 Request body:`, JSON.stringify(req.body, null, 2));
 
-  stmt.run(
-    x,
-    y,
-    room_id,
-    device_type_id,
-    label,
-    amperage,
-    gfci ? 1 : 0,
-    JSON.stringify(properties),
-    circuit_id,
-    wattage,
-    id,
-    function (err) {
+  // Build dynamic query based on provided fields
+  const fields = [];
+  const values = [];
+
+  if (x !== undefined) {
+    fields.push('x = ?');
+    values.push(x);
+  }
+  if (y !== undefined) {
+    fields.push('y = ?');
+    values.push(y);
+  }
+  if (room_id !== undefined) {
+    fields.push('room_id = ?');
+    values.push(room_id);
+  }
+  if (device_type_id !== undefined) {
+    fields.push('device_type_id = ?');
+    values.push(device_type_id);
+    console.log(`🔧 Setting device_type_id to: ${device_type_id}`);
+  }
+  if (label !== undefined) {
+    fields.push('label = ?');
+    values.push(label);
+  }
+  if (amperage !== undefined) {
+    fields.push('amperage = ?');
+    values.push(amperage);
+  }
+  if (voltage !== undefined) {
+    fields.push('voltage = ?');
+    values.push(voltage);
+  }
+  if (wattage !== undefined) {
+    fields.push('wattage = ?');
+    values.push(wattage);
+  }
+  if (gfci !== undefined) {
+    fields.push('gfci = ?');
+    values.push(gfci ? 1 : 0);
+  }
+  if (properties !== undefined) {
+    fields.push('properties = ?');
+    values.push(JSON.stringify(properties));
+  }
+  if (circuit_id !== undefined) {
+    fields.push('circuit_id = ?');
+    values.push(circuit_id);
+  }
+
+  if (fields.length === 0) {
+    console.log(`❌ No fields to update for component ${id}`);
+    res.status(400).json({ error: 'No fields to update' });
+    return;
+  }
+
+  values.push(id);
+  const query = `UPDATE entities SET ${fields.join(', ')} WHERE id = ?`;
+  
+  console.log(`🔧 SQL Query: ${query}`);
+  console.log(`🔧 Values:`, values);
+
+  const stmt = db.prepare(query);
+  stmt.run(values, function (err) {
+    if (err) {
+      console.log(`❌ Database error: ${err.message}`);
+      res.status(500).json({ error: err.message });
+      return;
+    }
+
+    console.log(`✅ Updated ${this.changes} rows for component ${id}`);
+
+    // Return the updated component with all properties
+    db.get('SELECT * FROM entities WHERE id = ?', [id], (err, row) => {
       if (err) {
+        console.log(`❌ Error fetching updated component: ${err.message}`);
         res.status(500).json({ error: err.message });
         return;
       }
 
-      // Return the updated component with all properties
-      db.get('SELECT * FROM entities WHERE id = ?', [id], (err, row) => {
-        if (err) {
-          res.status(500).json({ error: err.message });
-          return;
+      // Parse properties JSON
+      if (row.properties) {
+        try {
+          row.properties = JSON.parse(row.properties);
+        } catch (e) {
+          row.properties = {};
         }
+      }
 
-        // Parse properties JSON
-        if (row.properties) {
-          try {
-            row.properties = JSON.parse(row.properties);
-          } catch (e) {
-            row.properties = {};
-          }
-        }
+      // Convert GFCI from 0/1 to boolean
+      row.gfci = Boolean(row.gfci);
 
-        res.json(row);
-      });
-    }
-  );
+      console.log(`✅ Returning updated component:`, JSON.stringify(row, null, 2));
+      res.json(row);
+    });
+  });
   stmt.finalize();
 });
 

@@ -46,6 +46,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import config from '../config';
+import deviceTypesService from '../services/deviceTypesService';
 
 // Import electrical components
 import ElectricalComponentLayer from './electrical/ElectricalComponentLayer';
@@ -94,8 +95,9 @@ const ComponentMapping = ({
 
   // Load analysis is now embedded in the drawer
 
-  // Circuit filtering state
-  const [circuitFilter, setCircuitFilter] = useState(null); // null = show all, 'unassigned' = unassigned only, circuit.id = specific circuit
+  // Circuit filtering state - now supports multiple circuit selection
+  const [circuitFilter, setCircuitFilter] = useState(null); // null = show all, 'unassigned' = unassigned only, Set = multiple circuits
+  const [selectedCircuits, setSelectedCircuits] = useState(new Set()); // Track multiple selected circuits
 
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -292,6 +294,9 @@ const ComponentMapping = ({
   const loadAllData = useCallback(async () => {
     try {
       setLoading(true);
+
+      // Load device types first (needed for component rendering)
+      await deviceTypesService.fetchDeviceTypes();
 
       // Load floor plan data (rooms)
       const floorPlanResponse = await fetch(`${config.BACKEND_URL}/api/floor-plans/${project.id}`);
@@ -586,17 +591,70 @@ const ComponentMapping = ({
     handleContextMenuClose();
   };
 
-  // Utility function to determine which room a component is in based on position
-  const getComponentRoom = (x, y) => {
-    return rooms.find(room =>
-      x >= room.x &&
-      x <= room.x + room.width &&
-      y >= room.y &&
-      y <= room.y + room.height
-    );
+  // Circuit filtering helper functions
+  const toggleCircuitFilter = (circuitId) => {
+    if (circuitId === 'unassigned') {
+      if (circuitFilter === 'unassigned') {
+        // If unassigned is currently selected, clear all
+        setCircuitFilter(null);
+        setSelectedCircuits(new Set());
+      } else {
+        // Select unassigned only
+        setCircuitFilter('unassigned');
+        setSelectedCircuits(new Set());
+      }
+      return;
+    }
+
+    // Handle multi-select for specific circuits
+    const newSelectedCircuits = new Set(selectedCircuits);
+    
+    if (newSelectedCircuits.has(circuitId)) {
+      // Remove circuit from selection
+      newSelectedCircuits.delete(circuitId);
+    } else {
+      // Add circuit to selection
+      newSelectedCircuits.add(circuitId);
+    }
+
+    if (newSelectedCircuits.size === 0) {
+      setCircuitFilter(null);
+      setSelectedCircuits(new Set());
+    } else {
+      setCircuitFilter('multi');
+      setSelectedCircuits(newSelectedCircuits);
+    }
   };
 
-  // Handle component property updates
+  const clearAllFilters = () => {
+    setCircuitFilter(null);
+    setSelectedCircuits(new Set());
+  };
+
+  const isCircuitSelected = (circuitId) => {
+    if (circuitFilter === 'unassigned' && circuitId === 'unassigned') return true;
+    if (circuitFilter === 'multi') return selectedCircuits.has(circuitId);
+    return false;
+  };
+
+  // Filter components based on current selection
+  const getFilteredComponents = () => {
+    if (circuitFilter === null) {
+      return electricalComponents; // Show all
+    }
+    if (circuitFilter === 'unassigned') {
+      return electricalComponents.filter(c => !c.circuit_id);
+    }
+    if (circuitFilter === 'multi') {
+      return electricalComponents.filter(c => 
+        selectedCircuits.has(c.circuit_id) || 
+        (selectedCircuits.has('unassigned') && !c.circuit_id)
+      );
+    }
+    return electricalComponents;
+  };
+
+  // Handle component property saves
   const handleComponentSave = async (updatedComponent) => {
     try {
       const response = await fetch(`${config.BACKEND_URL}/api/electrical/components/${updatedComponent.id}`, {
@@ -607,21 +665,34 @@ const ComponentMapping = ({
 
       if (response.ok) {
         const savedComponent = await response.json();
-        // Update local state with the saved component data from backend
+        // Update component in local state
         setElectricalComponents(prev =>
           prev.map(comp =>
-            comp.id === updatedComponent.id
-              ? savedComponent
-              : comp
+            comp.id === updatedComponent.id ? { ...savedComponent, ...updatedComponent } : comp
           )
         );
-        console.log('Component updated successfully');
+        // Update selected component if it's the one being edited
+        if (selectedComponent?.id === updatedComponent.id) {
+          setSelectedComponent({ ...selectedComponent, ...updatedComponent });
+        }
       } else {
-        console.error('Failed to update component');
+        console.error('Failed to save component');
       }
     } catch (error) {
-      console.error('Error updating component:', error);
+      console.error('Error saving component:', error);
     }
+  };
+
+  // Get the room that contains a given component
+  const getComponentRoom = (component) => {
+    if (!component || !rooms) return null;
+    
+    return rooms.find(room => {
+      return component.x >= room.x &&
+             component.x <= room.x + room.width &&
+             component.y >= room.y &&
+             component.y <= room.y + room.height;
+    });
   };
 
   // Get completion status (simplified - no circuit assignments)
@@ -849,7 +920,7 @@ const ComponentMapping = ({
 
                   {/* Electrical Components */}
                   <ElectricalComponentLayer
-                    components={electricalComponents}
+                    components={getFilteredComponents()}
                     selectedComponent={selectedComponent}
                     onComponentSelect={handleComponentSelect}
                     onComponentDoubleClick={handleComponentDoubleClick}
@@ -859,6 +930,7 @@ const ComponentMapping = ({
                     visible={true}
                     circuits={circuits}
                     circuitFilter={circuitFilter}
+                    selectedCircuits={selectedCircuits}
                   />
 
                   {/* Electrical Panels */}
@@ -989,7 +1061,7 @@ const ComponentMapping = ({
                         size="small"
                         variant={circuitFilter === null ? "filled" : "outlined"}
                         color={circuitFilter === null ? "primary" : "default"}
-                        onClick={() => setCircuitFilter(null)}
+                        onClick={clearAllFilters}
                         clickable
                         sx={{ fontSize: '10px' }}
                       />
@@ -997,12 +1069,25 @@ const ComponentMapping = ({
                       <Chip
                         label={`Unassigned (${electricalComponents.filter(c => !c.circuit_id).length})`}
                         size="small"
-                        variant={circuitFilter === 'unassigned' ? "filled" : "outlined"}
-                        color={circuitFilter === 'unassigned' ? "warning" : "default"}
-                        onClick={() => setCircuitFilter('unassigned')}
+                        variant={isCircuitSelected('unassigned') ? "filled" : "outlined"}
+                        color={isCircuitSelected('unassigned') ? "warning" : "default"}
+                        onClick={() => toggleCircuitFilter('unassigned')}
                         clickable
                         sx={{ fontSize: '10px' }}
                       />
+                      
+                      {/* Multi-select indicator */}
+                      {circuitFilter === 'multi' && selectedCircuits.size > 1 && (
+                        <Chip
+                          label={`${selectedCircuits.size} Selected`}
+                          size="small"
+                          color="secondary"
+                          variant="outlined"
+                          onClick={clearAllFilters}
+                          onDelete={clearAllFilters}
+                          sx={{ fontSize: '10px' }}
+                        />
+                      )}
                     </Box>
 
                     {/* Circuit chips in a scrollable container */}
@@ -1045,7 +1130,7 @@ const ComponentMapping = ({
                           };
 
                           const circuitColor = getCircuitColor(circuit);
-                          const isActive = circuitFilter === circuit.id;
+                          const isActive = isCircuitSelected(circuit.id);
 
                           return (
                             <Chip
@@ -1053,7 +1138,7 @@ const ComponentMapping = ({
                               label={`${circuit.breaker_position} (${componentCount})`}
                               size="small"
                               variant={isActive ? "filled" : "outlined"}
-                              onClick={() => setCircuitFilter(circuit.id)}
+                              onClick={() => toggleCircuitFilter(circuit.id)}
                               clickable
                               sx={{
                                 fontSize: '10px',

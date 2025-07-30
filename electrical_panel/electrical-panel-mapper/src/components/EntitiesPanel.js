@@ -49,7 +49,7 @@ function EntitiesPanel({ toggleDarkMode, darkMode }) {
 
   const handleSaveEntity = () => {
     const method = 'PUT';
-    const url = `${config.BACKEND_URL}/entities/${editingEntity}`;
+    const url = `${config.BACKEND_URL}/api/entities/${editingEntity}`;
 
     fetch(url, {
       method,
@@ -88,20 +88,26 @@ function EntitiesPanel({ toggleDarkMode, darkMode }) {
         <Table size="small" mt={4}>
           <TableHead>
             <TableRow>
-              <TableCell>Type</TableCell>
+              <TableCell>Label</TableCell>
               <TableCell>Room Name</TableCell>
               <TableCell>Position (X, Y)</TableCell>
-              <TableCell>Breaker ID</TableCell>
+              <TableCell>Voltage</TableCell>
+              <TableCell>Amperage</TableCell>
+              <TableCell>Wattage</TableCell>
+              <TableCell>GFCI</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {entities.map(entity => (
               <TableRow key={entity.id}>
-                <TableCell>{entity.type}</TableCell>
+                <TableCell>{entity.label || 'Unlabeled'}</TableCell>
                 <TableCell>{entity.room_name || 'Unassigned'}</TableCell>
                 <TableCell>{`(${entity.x.toFixed(2)}, ${entity.y.toFixed(2)})`}</TableCell>
-                <TableCell>{entity.breaker_id}</TableCell>
+                <TableCell>{entity.voltage || 120}V</TableCell>
+                <TableCell>{entity.amperage || 15}A</TableCell>
+                <TableCell>{entity.wattage || 0}W</TableCell>
+                <TableCell>{entity.gfci ? 'Yes' : 'No'}</TableCell>
                 <TableCell>
                   <IconButton color="primary" onClick={() => handleOpenDialog(entity)}>
                     <EditIcon />
@@ -120,13 +126,22 @@ function EntitiesPanel({ toggleDarkMode, darkMode }) {
       <Dialog open={isDialogOpen} onClose={handleCloseDialog}>
         <DialogTitle>Edit Entity</DialogTitle>
         <DialogContent>
+          <TextField
+            margin="dense"
+            label="Label"
+            name="label"
+            value={entityData.label || ''}
+            onChange={handleChange}
+            fullWidth
+          />
           <FormControl fullWidth margin="dense">
             <InputLabel>Room</InputLabel>
             <Select
               name="room_id"
-              value={entityData.room_id}
+              value={entityData.room_id || ''}
               onChange={handleChange}
             >
+              <MenuItem value="">No Room</MenuItem>
               {rooms.map(room => (
                 <MenuItem key={room.id} value={room.id}>
                   {room.name}
@@ -136,12 +151,42 @@ function EntitiesPanel({ toggleDarkMode, darkMode }) {
           </FormControl>
           <TextField
             margin="dense"
-            label="Breaker ID"
-            name="breaker"
-            value={entityData.breaker_id}
+            label="Voltage (V)"
+            name="voltage"
+            type="number"
+            value={entityData.voltage || 120}
             onChange={handleChange}
             fullWidth
           />
+          <TextField
+            margin="dense"
+            label="Amperage (A)"
+            name="amperage"
+            type="number"
+            value={entityData.amperage || 15}
+            onChange={handleChange}
+            fullWidth
+          />
+          <TextField
+            margin="dense"
+            label="Wattage (W)"
+            name="wattage"
+            type="number"
+            value={entityData.wattage || 0}
+            onChange={handleChange}
+            fullWidth
+          />
+          <FormControl fullWidth margin="dense">
+            <InputLabel>GFCI Protection</InputLabel>
+            <Select
+              name="gfci"
+              value={entityData.gfci ? 'true' : 'false'}
+              onChange={(e) => handleChange({ target: { name: 'gfci', value: e.target.value === 'true' } })}
+            >
+              <MenuItem value="false">No</MenuItem>
+              <MenuItem value="true">Yes</MenuItem>
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} color="secondary">

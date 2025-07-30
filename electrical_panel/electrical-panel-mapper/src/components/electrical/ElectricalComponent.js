@@ -15,6 +15,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ThermostatIcon from '@mui/icons-material/Thermostat';
 import AcUnitIcon from '@mui/icons-material/AcUnit';
 import FloorIcon from '@mui/icons-material/Foundation';
+import { getComponentType, getApplianceType } from '../../utils/deviceTypeMapping';
 
 const ElectricalComponent = ({ 
   component, 
@@ -83,6 +84,10 @@ const ElectricalComponent = ({
       default: return OutletIcon;
     }
   };
+
+  // Determine component type and appliance type from device_type_id
+  const componentType = component.device_type_id ? getComponentType(component.device_type_id) : (component.type || 'outlet');
+  const applianceType = componentType === 'appliance' ? getApplianceType(component.device_type_id) : (component.properties?.appliance_type || 'baseboard_heater');
 
   // Get circuit for this component
   const assignedCircuit = circuits.find(c => c.id === component.circuit_id);
@@ -170,7 +175,7 @@ const ElectricalComponent = ({
         cy={component.y}
         r={size / 2 + 2}
         fill="white"
-        stroke={getSymbolColor(component.type, selected)}
+        stroke={getSymbolColor(componentType, selected)}
         strokeWidth={strokeWidth}
         opacity={selected ? 0.9 : 0.7}
       />
@@ -189,9 +194,9 @@ const ElectricalComponent = ({
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          color: getSymbolColor(component.type, selected)
+          color: getSymbolColor(componentType, selected)
         }}>
-          {React.createElement(getIconComponent(component.type, component.properties?.appliance_type), {
+          {React.createElement(getIconComponent(componentType, applianceType), {
             style: { fontSize: size * 0.7 }
           })}
         </div>
@@ -258,7 +263,7 @@ const ElectricalComponent = ({
           fontWeight={selected ? 'bold' : 'normal'}
           style={{ pointerEvents: 'none' }}
         >
-          {component.label || getDefaultName(component.type, component.properties?.appliance_type)}
+          {component.label || getDefaultName(componentType, applianceType)}
         </text>
       )}
       

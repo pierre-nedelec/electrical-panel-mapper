@@ -102,6 +102,38 @@ export const useComponentPlacement = (
       return selectedTool.name;
     };
 
+    const getDefaultWattage = (toolId, applianceType) => {
+      if (toolId === 'appliance') {
+        switch (applianceType) {
+          case 'baseboard_heater': return 1500;
+          case 'jacuzzi': return 7000;
+          case 'hvac_unit': return 4000;
+          case 'ceiling_fan': return 150;
+          case 'electric_water_heater': return 4500;
+          case 'electric_dryer': return 5000;
+          case 'electric_range': return 8000;
+          case 'dishwasher': return 1800;
+          case 'garbage_disposal': return 900;
+          case 'refrigerator': return 800;
+          case 'microwave': return 1500;
+          case 'air_conditioner': return 3500;
+          case 'heat_pump': return 4000;
+          case 'floor_heating': return 2000;
+          default: return 1500;
+        }
+      }
+      // Standard loads for other components
+      switch (toolId) {
+        case 'outlet': return 180; // NEC standard
+        case 'light': return 100; // Typical LED/CFL
+        case 'switch': return 0; // Switches don't consume power
+        default: return 0;
+      }
+    };
+
+    // Find room containing this component
+    const containingRoom = getRoomAtPoint(previewComponent);
+
     const newComponent = {
       type: selectedTool.id,
       x: previewComponent.x,
@@ -109,11 +141,22 @@ export const useComponentPlacement = (
       room_id: previewComponent.room_id,
       device_type_id: selectedTool.device_type_id || 1, // Default to first device type
       label: getDefaultLabel(selectedTool.id, isAppliance ? defaultApplianceType : null),
+      wattage: getDefaultWattage(selectedTool.id, isAppliance ? defaultApplianceType : null),
+      voltage: 120, // Default voltage
+      amperage: 15, // Default amperage
+      gfci: false, // Default GFCI setting
+      circuit_id: null, // Will be assigned when user selects circuit
       properties: isAppliance ? { 
         appliance_type: defaultApplianceType,
         gfci: false,
         dedicated: false
-      } : {}
+      } : {},
+      // Additional metadata for better UX
+      _metadata: {
+        room_name: containingRoom?.name || 'Unassigned',
+        needs_circuit_assignment: true,
+        placement_timestamp: Date.now()
+      }
     };
 
     if (onComponentPlaced) {
@@ -121,7 +164,7 @@ export const useComponentPlacement = (
     }
 
     setPreviewComponent(null);
-  }, [previewComponent]);
+  }, [previewComponent, getRoomAtPoint]);
 
   // Clear preview
   const clearPreview = useCallback(() => {
