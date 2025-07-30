@@ -47,6 +47,7 @@ import CalculateIcon from '@mui/icons-material/Calculate';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import config from '../config';
 import deviceTypesService from '../services/deviceTypesService';
+import useSvgTheming from '../hooks/useSvgTheming';
 
 // Import electrical components
 import ElectricalComponentLayer from './electrical/ElectricalComponentLayer';
@@ -58,7 +59,8 @@ import { useComponentPlacement, ComponentPreview } from './electrical/ComponentP
 const ComponentMapping = ({
   project,
   onComplete,
-  onBackToPanels
+  onBackToPanels,
+  darkMode = false
 }) => {
   // Floor plan and room data
   const [rooms, setRooms] = useState([]);
@@ -98,11 +100,17 @@ const ComponentMapping = ({
   // Circuit filtering state - now supports multiple circuit selection
   const [circuitFilter, setCircuitFilter] = useState(null); // null = show all, 'unassigned' = unassigned only, Set = multiple circuits
   const [selectedCircuits, setSelectedCircuits] = useState(new Set()); // Track multiple selected circuits
+  
+  // Circuit hover highlighting state
+  const [hoveredCircuit, setHoveredCircuit] = useState(null); // Track which circuit is being hovered for highlighting
 
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
   const svgRef = useRef(null);
+
+  // Apply SVG theming for dark mode
+  useSvgTheming(svgRef, viewBox, darkMode);
 
   // Initialize component placement hook
   const {
@@ -855,7 +863,7 @@ const ComponentMapping = ({
           position: 'relative',
           flexGrow: 1,
           overflow: 'hidden',
-          backgroundColor: '#f5f5f5'
+          backgroundColor: darkMode ? '#2c2c2c' : '#f5f5f5'
         }}
       >
                 <svg
@@ -878,7 +886,7 @@ const ComponentMapping = ({
                   {/* Grid pattern */}
                   <defs>
                     <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e0e0e0" strokeWidth="0.5"/>
+                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke={darkMode ? "#444444" : "#e0e0e0"} strokeWidth="0.5"/>
                     </pattern>
                   </defs>
                   <rect x="-2000" y="-2000" width="5000" height="5000" fill="url(#grid)" />
@@ -892,8 +900,8 @@ const ComponentMapping = ({
                           y={room.y}
                           width={room.width}
                           height={room.height}
-                          fill="rgba(144, 202, 249, 0.1)"
-                          stroke="#1976d2"
+                          fill={darkMode ? "rgba(144, 202, 249, 0.2)" : "rgba(144, 202, 249, 0.1)"}
+                          stroke={darkMode ? "#90caf9" : "#1976d2"}
                           strokeWidth="2"
                         />
                         <text
@@ -902,7 +910,7 @@ const ComponentMapping = ({
                           textAnchor="middle"
                           dominantBaseline="middle"
                           fontSize="12"
-                          fill="#1976d2"
+                          fill={darkMode ? "#90caf9" : "#1976d2"}
                           fontWeight="500"
                           style={{
                             pointerEvents: 'none',
@@ -931,6 +939,7 @@ const ComponentMapping = ({
                     circuits={circuits}
                     circuitFilter={circuitFilter}
                     selectedCircuits={selectedCircuits}
+                    hoveredCircuit={hoveredCircuit}
                   />
 
                   {/* Electrical Panels */}
@@ -1072,6 +1081,8 @@ const ComponentMapping = ({
                         variant={isCircuitSelected('unassigned') ? "filled" : "outlined"}
                         color={isCircuitSelected('unassigned') ? "warning" : "default"}
                         onClick={() => toggleCircuitFilter('unassigned')}
+                        onMouseEnter={() => setHoveredCircuit('unassigned')}
+                        onMouseLeave={() => setHoveredCircuit(null)}
                         clickable
                         sx={{ fontSize: '10px' }}
                       />
@@ -1102,11 +1113,11 @@ const ComponentMapping = ({
                           width: '4px',
                         },
                         '&::-webkit-scrollbar-track': {
-                          background: '#f1f1f1',
+                          background: darkMode ? '#424242' : '#f1f1f1',
                           borderRadius: '2px',
                         },
                         '&::-webkit-scrollbar-thumb': {
-                          background: '#c1c1c1',
+                          background: darkMode ? '#757575' : '#c1c1c1',
                           borderRadius: '2px',
                         },
                       }}>
@@ -1139,6 +1150,8 @@ const ComponentMapping = ({
                               size="small"
                               variant={isActive ? "filled" : "outlined"}
                               onClick={() => toggleCircuitFilter(circuit.id)}
+                              onMouseEnter={() => setHoveredCircuit(circuit.id)}
+                              onMouseLeave={() => setHoveredCircuit(null)}
                               clickable
                               sx={{
                                 fontSize: '10px',
