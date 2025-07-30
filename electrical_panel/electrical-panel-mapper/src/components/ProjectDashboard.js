@@ -40,6 +40,9 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [loading, setLoading] = useState(true);
+  // Add delete confirmation dialog state
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState({ open: false, project: null });
+  const [deleting, setDeleting] = useState(false);
 
   // Load saved projects on mount
   useEffect(() => {
@@ -50,21 +53,60 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
     try {
       const response = await fetch(`${config.BACKEND_URL}/api/floor-plans`);
       if (response.ok) {
-        const projects = await response.json();
-        // Add project status analysis
+        const plans = await response.json();
+        
+        // Get additional data for each project
         const projectsWithStatus = await Promise.all(
-          projects.map(async (project) => {
-            const status = await analyzeProjectStatus(project);
-            return { ...project, status };
+          plans.map(async (plan) => {
+            try {
+              // Get panels count
+              const panelsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/panels?floor_plan_id=${plan.id}`);
+              const panels = panelsResponse.ok ? await panelsResponse.json() : [];
+              
+              // Get components count  
+              const componentsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/components?floor_plan_id=${plan.id}`);
+              const components = componentsResponse.ok ? await componentsResponse.json() : [];
+              
+              // Parse rooms data
+              const rooms = JSON.parse(plan.rooms_data || '[]');
+              
+              // Determine project completion status
+              const hasRooms = rooms.length > 0;
+              const hasPanels = panels.length > 0;
+              const hasComponents = components.length > 0;
+              
+              let step = 1;
+              if (hasRooms) step = 2;
+              if (hasPanels) step = 3;
+              
+              const complete = hasRooms && hasPanels && hasComponents;
+              
+              return {
+                ...plan,
+                status: {
+                  step,
+                  complete,
+                  hasRooms,
+                  hasPanels,
+                  hasComponents,
+                  panelCount: panels.length,
+                  componentCount: components.length
+                }
+              };
+            } catch (error) {
+              console.warn(`Failed to load status for project ${plan.id}:`, error);
+              return {
+                ...plan,
+                status: { step: 1, complete: false }
+              };
+            }
           })
         );
+        
         setSavedProjects(projectsWithStatus);
       }
     } catch (error) {
       console.error('Failed to load projects:', error);
-      // Fallback to localStorage
-      const localProjects = JSON.parse(localStorage.getItem('floorPlans') || '[]');
-      setSavedProjects(localProjects.map(p => ({ ...p, status: { step: 1, complete: false } })));
     } finally {
       setLoading(false);
     }
@@ -174,6 +216,53 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
 
     setShowNewProjectDialog(false);
     setNewProjectName('');
+  };
+
+  // NEW: Handle delete project with confirmation
+  const handleDeleteProject = (project) => {
+    setDeleteConfirmDialog({ open: true, project });
+  };
+
+  const confirmDeleteProject = async () => {
+    const { project } = deleteConfirmDialog;
+    if (!project) return;
+
+    setDeleting(true);
+    try {
+      console.log(`🗑️ Deleting floor plan: ${project.name} (ID: ${project.id})`);
+      
+      const response = await fetch(`${config.BACKEND_URL}/api/floor-plans/${project.id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Delete result:', result);
+        
+        // Remove from local state
+        setSavedProjects(prev => prev.filter(p => p.id !== project.id));
+        
+        // Show success message (you could add a toast/snackbar here)
+        console.log(`🎉 Successfully deleted "${project.name}" and all associated data`);
+        
+        // Reload projects to ensure consistency
+        await loadSavedProjects();
+      } else {
+        const error = await response.json();
+        console.error('❌ Delete failed:', error);
+        alert(`Failed to delete project: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('❌ Error during delete:', error);
+      alert(`Error deleting project: ${error.message}`);
+    } finally {
+      setDeleting(false);
+      setDeleteConfirmDialog({ open: false, project: null });
+    }
+  };
+
+  const cancelDeleteProject = () => {
+    setDeleteConfirmDialog({ open: false, project: null });
   };
 
   const getStepIcon = (step) => {
@@ -330,8 +419,17 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
                         <IconButton
                           size="small"
                           onClick={() => onEditProject(project)}
+                          sx={{ mr: 1 }}
                         >
                           <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteProject(project)}
+                          color="error"
+                          title={`Delete "${project.name}"`}
+                        >
+                          <DeleteIcon />
                         </IconButton>
                       </ListItemSecondaryAction>
                     </ListItem>
@@ -386,6 +484,69 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
             disabled={!newProjectName.trim()}
           >
             Create Project
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmDialog.open}
+        onClose={cancelDeleteProject}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle id="delete-dialog-title" sx={{ color: 'error.main' }}>
+          ⚠️ Confirm Project Deletion
+        </DialogTitle>
+        <DialogContent>
+          <Typography id="delete-dialog-description" sx={{ mb: 2 }}>
+            Are you sure you want to permanently delete the project "{deleteConfirmDialog.project?.name}"?
+          </Typography>
+          
+          {deleteConfirmDialog.project?.status && (
+            <Box sx={{ bgcolor: 'grey.100', p: 2, borderRadius: 1, mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                This will delete ALL associated data:
+              </Typography>
+              <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                <Typography component="li" variant="body2">
+                  Floor plan and {JSON.parse(deleteConfirmDialog.project?.rooms_data || '[]').length} rooms
+                </Typography>
+                {deleteConfirmDialog.project.status.componentCount > 0 && (
+                  <Typography component="li" variant="body2">
+                    {deleteConfirmDialog.project.status.componentCount} electrical components
+                  </Typography>
+                )}
+                {deleteConfirmDialog.project.status.panelCount > 0 && (
+                  <Typography component="li" variant="body2">
+                    {deleteConfirmDialog.project.status.panelCount} electrical panels and all circuits
+                  </Typography>
+                )}
+                <Typography component="li" variant="body2">
+                  All materials lists and code compliance records
+                </Typography>
+              </Box>
+            </Box>
+          )}
+          
+          <Typography variant="body2" color="error" sx={{ fontWeight: 'bold' }}>
+            ⚠️ This action cannot be undone!
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDeleteProject} color="primary" variant="outlined">
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDeleteProject} 
+            color="error" 
+            variant="contained" 
+            disabled={deleting}
+            startIcon={deleting ? null : <DeleteIcon />}
+          >
+            {deleting ? 'Deleting...' : 'Delete Project'}
           </Button>
         </DialogActions>
       </Dialog>

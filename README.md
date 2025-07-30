@@ -13,6 +13,78 @@ Add this repository to your Home Assistant instance:
 5. **Find "Electrical Panel Mapper"** in the new repository section
 6. **Install** and enjoy! 🔌
 
+## Development Setup
+
+This project supports both **standalone development** and **Home Assistant add-on mode**:
+
+### Quick Start (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/pierre-nedelec/electrical-panel-mapper.git
+cd electrical-panel-mapper
+
+# Start in standalone mode (separate frontend/backend)
+./dev-start.sh --standalone
+
+# OR start in fullstack mode (simulates HA add-on)
+./dev-start.sh --fullstack
+```
+
+### Development Modes
+
+#### 🔧 Standalone Mode (Default)
+Perfect for active development with hot reload:
+```bash
+./dev-start.sh --standalone
+# Frontend: http://localhost:3002 (hot reload)
+# Backend:  http://localhost:3001 (API only)
+```
+
+#### 🏠 Fullstack Mode (HA Add-on Simulation)
+Tests the exact HA add-on experience:
+```bash
+./dev-start.sh --fullstack
+# Application: http://localhost:8080 (production build)
+```
+
+#### 🧹 Clean Start
+If ports are in use:
+```bash
+./dev-start.sh --standalone --kill-ports
+```
+
+### Manual Setup
+
+If you prefer manual control:
+
+1. **Backend Setup**
+```bash
+cd electrical_panel/electrical-panel-backend
+npm install
+npm start  # Runs on port 3001
+```
+
+2. **Frontend Setup** (separate terminal)
+```bash
+cd electrical_panel/electrical-panel-mapper
+npm install
+
+# For standalone development (connects to localhost:3001)
+npm run start:standalone
+
+# For fullstack development (connects to localhost:8080)
+npm run start:fullstack
+```
+
+### Environment Variables
+
+The frontend automatically detects the correct backend URL:
+
+- **Standalone**: `REACT_APP_STANDALONE=true` → connects to `http://localhost:3001`
+- **Fullstack**: Default → connects to `http://localhost:8080`
+- **Production/HA**: Default → uses relative paths for ingress
+
 ## About the Add-on
 
 ## Features
