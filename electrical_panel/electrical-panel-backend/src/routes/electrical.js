@@ -742,4 +742,304 @@ router.get('/symbols', (req, res) => {
   });
 });
 
+// ================= PANEL EXPORT =================
+
+/**
+ * @swagger
+ * /electrical/export/panel-schedule/{floor_plan_id}:
+ *   get:
+ *     summary: Generate panel schedule export data for electrician documentation
+ *     tags: [Electrical]
+ *     parameters:
+ *       - in: path
+ *         name: floor_plan_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Floor plan ID to export
+ *     responses:
+ *       200:
+ *         description: Panel schedule data formatted for export
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 project_name:
+ *                   type: string
+ *                 export_date:
+ *                   type: string
+ *                 panels:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       panel_info:
+ *                         type: object
+ *                       circuits:
+ *                         type: array
+ *                       summary:
+ *                         type: object
+ */
+router.get('/export/panel-schedule/:floor_plan_id', async (req, res) => {
+  const db = getDatabase();
+  const floor_plan_id = req.params.floor_plan_id;
+
+  try {
+    // Get floor plan info
+    const floorPlan = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM floor_plans WHERE id = ?', [floor_plan_id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!floorPlan) {
+      res.status(404).json({ error: 'Floor plan not found' });
+      return;
+    }
+
+    // Get all panels for this floor plan
+    const panels = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM electrical_panels WHERE floor_plan_id = ? ORDER BY panel_name', [floor_plan_id], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    // Get device types for component classification
+    const deviceTypes = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM device_types', [], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    // Create device type lookup
+    const deviceTypeMap = {};
+    deviceTypes.forEach(dt => {
+      deviceTypeMap[dt.id] = dt.name;
+    });
+
+    // Get rooms from rooms table (which maps integer IDs to svg_ref)
+    const roomsTable = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM rooms', [], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    // Get rooms from floor_plans.rooms_data JSON (this has the actual names)
+    let roomsFromFloorPlan = [];
+    if (floorPlan.rooms_data) {
+      try {
+        roomsFromFloorPlan = JSON.parse(floorPlan.rooms_data);
+      } catch (e) {
+        console.error('Error parsing rooms_data:', e);
+        roomsFromFloorPlan = [];
+      }
+    }
+
+    // Create a mapping from svg_ref to room name
+    const svgRefToName = {};
+    roomsFromFloorPlan.forEach(room => {
+      if (room.id && room.name) {
+        svgRefToName[room.id] = room.name;
+      }
+    });
+
+    // Create final room mapping: integer room_id -> room name
+    const roomMap = {};
+    roomsTable.forEach(room => {
+      if (room.svg_ref && svgRefToName[room.svg_ref]) {
+        roomMap[room.id] = svgRefToName[room.svg_ref];
+      }
+    });
+
+
+
+
+
+    // Process each panel
+    const panelExportData = await Promise.all(panels.map(async (panel) => {
+      // Get circuits for this panel
+      const circuits = await new Promise((resolve, reject) => {
+        db.all(
+          'SELECT * FROM electrical_circuits WHERE panel_id = ? ORDER BY breaker_position',
+          [panel.id],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+          }
+        );
+      });
+
+      // Process each circuit
+      const circuitData = await Promise.all(circuits.map(async (circuit) => {
+        // Get components connected to this circuit
+        const components = await new Promise((resolve, reject) => {
+          db.all(
+            `SELECT e.*, dt.name as device_type_name
+             FROM entities e 
+             LEFT JOIN device_types dt ON e.device_type_id = dt.id 
+             WHERE e.circuit_id = ? AND e.floor_plan_id = ?
+             ORDER BY e.room_id, dt.name, e.label`,
+            [circuit.id, floor_plan_id],
+            (err, rows) => {
+              if (err) reject(err);
+              else resolve(rows);
+            }
+          );
+        });
+
+        // Group components by type and room
+        const componentsByRoom = {};
+        const componentsByType = {};
+        let totalWattage = 0;
+
+        components.forEach(component => {
+          const deviceType = component.device_type_name || 'Unknown Device';
+          const wattage = component.wattage || 0;
+          
+          // Look up room name from our roomMap using the component's room_id
+          const roomName = roomMap[component.room_id] || null;
+          
+          totalWattage += wattage;
+          
+
+
+          // Group by room (only if we have a valid room name)
+          if (roomName) {
+            if (!componentsByRoom[roomName]) {
+              componentsByRoom[roomName] = {};
+            }
+            if (!componentsByRoom[roomName][deviceType]) {
+              componentsByRoom[roomName][deviceType] = [];
+            }
+            componentsByRoom[roomName][deviceType].push(component);
+          } else {
+            // Group without room for components with no room assignment
+            if (!componentsByRoom['']) {
+              componentsByRoom[''] = {};
+            }
+            if (!componentsByRoom[''][deviceType]) {
+              componentsByRoom[''][deviceType] = [];
+            }
+            componentsByRoom[''][deviceType].push(component);
+          }
+
+          // Group by type
+          if (!componentsByType[deviceType]) {
+            componentsByType[deviceType] = 0;
+          }
+          componentsByType[deviceType]++;
+        });
+
+        // Create human-readable description
+        let description = circuit.circuit_label || '';
+        const componentDescriptions = [];
+
+        // Add component counts by type and room
+        Object.keys(componentsByRoom).forEach(roomName => {
+          const roomComponents = componentsByRoom[roomName];
+          Object.keys(roomComponents).forEach(deviceType => {
+            const count = roomComponents[deviceType].length;
+            const items = roomComponents[deviceType];
+            
+            // Check for special appliances (items with custom labels)
+            const namedAppliances = items.filter(item => item.label && item.label.trim()).map(item => item.label);
+            
+            if (namedAppliances.length > 0) {
+              // Special appliances - list by name
+              if (roomName === '') {
+                // No room name - just list the appliances
+                componentDescriptions.push(namedAppliances.join(', '));
+              } else {
+                // With room name
+                componentDescriptions.push(`${roomName}: ${namedAppliances.join(', ')}`);
+              }
+            } else {
+              // Standard components - show count
+              const deviceName = deviceType.toLowerCase();
+              const deviceText = count === 1 ? deviceName : `${deviceName}s`;
+              
+              if (roomName === '') {
+                // No room name - just show count and type
+                componentDescriptions.push(`${count} ${deviceText}`);
+              } else {
+                // With room name
+                componentDescriptions.push(`${roomName}: ${count} ${deviceText}`);
+              }
+            }
+          });
+        });
+
+        return {
+          breaker_position: circuit.breaker_position,
+          secondary_position: circuit.secondary_position,
+          circuit_label: circuit.circuit_label || `Circuit ${circuit.breaker_position}`,
+          amperage: circuit.amperage,
+          voltage: circuit.breaker_type === 'double' || circuit.breaker_type === 'gfci_double' ? 240 : 120,
+          wire_gauge: circuit.wire_gauge,
+          breaker_type: circuit.breaker_type,
+          component_count: components.length,
+          total_wattage: totalWattage,
+          components_by_room: componentsByRoom,
+          components_by_type: componentsByType,
+          description: componentDescriptions.length > 0 ? componentDescriptions.join('; ') : description,
+          components: components
+        };
+      }));
+
+      // Calculate panel summary
+      const totalCircuits = circuits.length;
+      const usedPositions = circuits.length + circuits.filter(c => c.secondary_position).length;
+      const totalComponents = circuitData.reduce((sum, circuit) => sum + circuit.component_count, 0);
+      const totalLoad = circuitData.reduce((sum, circuit) => sum + circuit.total_wattage, 0);
+
+      return {
+        panel_info: {
+          id: panel.id,
+          name: panel.panel_name,
+          main_breaker_amps: panel.main_breaker_amps,
+          total_positions: panel.total_positions,
+          used_positions: usedPositions,
+          available_positions: panel.total_positions - usedPositions,
+          panel_type: panel.panel_type
+        },
+        circuits: circuitData,
+        summary: {
+          total_circuits: totalCircuits,
+          total_components: totalComponents,
+          total_load_watts: totalLoad,
+          estimated_load_amps: Math.round(totalLoad / 120), // Rough estimate
+          panel_utilization: Math.round((usedPositions / panel.total_positions) * 100)
+        }
+      };
+    }));
+
+    // Overall project summary
+    const projectSummary = {
+      total_panels: panels.length,
+      total_circuits: panelExportData.reduce((sum, panel) => sum + panel.summary.total_circuits, 0),
+      total_components: panelExportData.reduce((sum, panel) => sum + panel.summary.total_components, 0),
+      total_load_watts: panelExportData.reduce((sum, panel) => sum + panel.summary.total_load_watts, 0)
+    };
+
+    const exportData = {
+      project_name: floorPlan.name,
+      export_date: new Date().toISOString(),
+      export_timestamp: new Date().toLocaleString(),
+      panels: panelExportData,
+      summary: projectSummary
+    };
+
+    res.json(exportData);
+
+  } catch (error) {
+    console.error('Panel export error:', error);
+    res.status(500).json({ error: 'Failed to generate panel export data' });
+  }
+});
+
 module.exports = router; 

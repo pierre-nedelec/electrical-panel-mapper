@@ -4,10 +4,11 @@ import ProjectDashboard from './ProjectDashboard';
 import FloorPlanDrawer from './FloorPlanDrawer';
 import PanelConfiguration from './PanelConfiguration';
 import ComponentMapping from './ComponentMapping';
+import PanelExport from './PanelExport';
 import MenuBar from './MenuBar';
 
 const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
-  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, floorplan, panels, mapping
+  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, floorplan, panels, mapping, export
   const [currentProject, setCurrentProject] = useState(null);
 
   const handleStartProject = (project) => {
@@ -23,8 +24,10 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
       setCurrentView('floorplan');
     } else if (!project.status.hasPanels) {
       setCurrentView('panels');
-    } else {
+    } else if (!project.status.hasComponents) {
       setCurrentView('mapping');
+    } else {
+      setCurrentView('export');
     }
   };
 
@@ -42,7 +45,11 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
   };
 
   const handleComponentMappingComplete = () => {
-    // Could navigate to a project summary or back to dashboard
+    setCurrentView('export');
+  };
+
+  const handleExportComplete = () => {
+    // Project is now complete, go back to dashboard
     setCurrentView('dashboard');
   };
 
@@ -52,6 +59,10 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
 
   const handleBackToPanels = () => {
     setCurrentView('panels');
+  };
+
+  const handleBackToMapping = () => {
+    setCurrentView('mapping');
   };
 
   const handleBackToDashboard = () => {
@@ -69,6 +80,8 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
         return `${currentProject.name} - Panel Configuration`;
       case 'mapping':
         return `${currentProject.name} - Component Mapping`;
+      case 'export':
+        return `${currentProject.name} - Panel Export`;
       default:
         return 'Electrical Panel Mapper';
     }
@@ -81,7 +94,8 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
     const stepMap = {
       'floorplan': 0,
       'panels': 1,
-      'mapping': 2
+      'mapping': 2,
+      'export': 3
     };
     
     const currentStepIndex = stepMap[currentView] || 0;
@@ -97,6 +111,9 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
         case 2:
           setCurrentView('mapping');
           break;
+        case 3:
+          setCurrentView('export');
+          break;
       }
     }
   };
@@ -107,7 +124,8 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
     const stepMap = {
       'floorplan': 0,
       'panels': 1,
-      'mapping': 2
+      'mapping': 2,
+      'export': 3
     };
     
     const activeStep = stepMap[currentView] || 0;
@@ -163,7 +181,7 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
             Panel Setup
           </StepLabel>
         </Step>
-        <Step active={activeStep === 2}>
+        <Step completed={activeStep > 2}>
           <StepLabel 
             onClick={activeStep >= 2 ? () => handleStepClick(2) : undefined}
             sx={{ 
@@ -172,6 +190,17 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
             }}
           >
             Component Mapping
+          </StepLabel>
+        </Step>
+        <Step active={activeStep === 3}>
+          <StepLabel 
+            onClick={activeStep >= 3 ? () => handleStepClick(3) : undefined}
+            sx={{ 
+              cursor: activeStep >= 3 ? 'pointer' : 'default',
+              opacity: activeStep >= 3 ? 1 : 0.6 
+            }}
+          >
+            Panel Export
           </StepLabel>
         </Step>
       </Stepper>
@@ -230,6 +259,15 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
             project={currentProject}
             onComplete={handleComponentMappingComplete}
             onBackToPanels={handleBackToPanels}
+            darkMode={darkMode}
+          />
+        )}
+        
+        {currentView === 'export' && currentProject && (
+          <PanelExport
+            project={currentProject}
+            onComplete={handleExportComplete}
+            onBackToMapping={handleBackToMapping}
             darkMode={darkMode}
           />
         )}

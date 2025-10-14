@@ -1301,7 +1301,7 @@ const ComponentMapping = ({
                     gap: 1
                   }}
                 >
-                  <Tooltip title="Save Project">
+                  <Tooltip title="Proceed to Panel Export">
                     <Fab
                       size="small"
                       color="primary"
