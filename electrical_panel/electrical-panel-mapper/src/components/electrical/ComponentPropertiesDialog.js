@@ -23,6 +23,7 @@ import {
   getLoadColor,
   calculateComponentLoad 
 } from '../../utils/loadCalculations';
+import { canAddToCircuit } from '../../utils/circuitCapacityChecker';
 import { getComponentType, getApplianceType, getDeviceTypeId } from '../../utils/deviceTypeMapping';
 import deviceTypesService from '../../services/deviceTypesService';
 
@@ -382,7 +383,7 @@ const ComponentPropertiesDialog = ({
               </Select>
             </FormControl>
             
-            {/* Circuit Load Indicator */}
+            {/* Circuit Load Indicator with Capacity Check */}
             {formData.circuit_id && (
               <Box sx={{ mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                 {(() => {
@@ -399,7 +400,7 @@ const ComponentPropertiesDialog = ({
                     components: circuitComponents
                   }, deviceTypesService);
                   
-                  const componentLoad = calculateComponentLoad({ 
+                  const newComponent = { 
                     device_type_id: getDeviceTypeId(formData.type, formData.appliance_type),
                     wattage: formData.wattage,
                     type: formData.type, 
@@ -409,20 +410,39 @@ const ComponentPropertiesDialog = ({
                       dedicated: formData.dedicated,
                       switched: formData.switched
                     }
-                  }, deviceTypesService);
+                  };
+                  
+                  const componentLoad = calculateComponentLoad(newComponent, deviceTypesService);
+                  
+                  // Use enhanced capacity checker
+                  const capacityCheck = canAddToCircuit(
+                    selectedCircuit, 
+                    circuitComponents, 
+                    newComponent, 
+                    deviceTypesService
+                  );
+                  
+                  // Determine status color
+                  const statusColor = {
+                    'success': '#4caf50',
+                    'info': '#2196f3',
+                    'warning': '#ff9800',
+                    'error': '#f44336'
+                  }[capacityCheck.severity] || '#757575';
                   
                   return (
                     <Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                         <Typography variant="caption" color="textSecondary">
-                          Circuit Load: {formatLoad(capacity.currentLoad)} / {formatLoad(capacity.maxCapacity)}
+                          Circuit Load: {formatLoad(capacity.currentLoad)} / {formatLoad(capacity.maxCapacity * 0.8)}
                         </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {capacity.utilization}%
+                        <Typography variant="caption" sx={{ color: statusColor, fontWeight: 'bold' }}>
+                          {capacityCheck.analysis.utilizationPercent}%
                         </Typography>
                       </Box>
+                      
                       {/* Custom stacked progress bar showing existing vs new component load */}
-                      <Box sx={{ position: 'relative', height: 6, borderRadius: 1, bgcolor: 'grey.200', overflow: 'hidden' }}>
+                      <Box sx={{ position: 'relative', height: 8, borderRadius: 1, bgcolor: 'grey.200', overflow: 'hidden', mb: 1 }}>
                         {/* Existing components load (solid) */}
                         <Box
                           sx={{
@@ -430,7 +450,7 @@ const ComponentPropertiesDialog = ({
                             left: 0,
                             top: 0,
                             height: '100%',
-                            width: `${Math.min((capacity.currentLoad / capacity.maxCapacity) * 100, 100)}%`,
+                            width: `${Math.min((capacity.currentLoad / (capacity.maxCapacity * 0.8)) * 100, 100)}%`,
                             bgcolor: getLoadColor(capacity.utilization),
                             borderRadius: 1
                           }}
@@ -439,30 +459,62 @@ const ComponentPropertiesDialog = ({
                         <Box
                           sx={{
                             position: 'absolute',
-                            left: `${Math.min((capacity.currentLoad / capacity.maxCapacity) * 100, 100)}%`,
+                            left: `${Math.min((capacity.currentLoad / (capacity.maxCapacity * 0.8)) * 100, 100)}%`,
                             top: 0,
                             height: '100%',
-                            width: `${Math.min((componentLoad / capacity.maxCapacity) * 100, 100 - Math.min((capacity.currentLoad / capacity.maxCapacity) * 100, 100))}%`,
+                            width: `${Math.min((componentLoad / (capacity.maxCapacity * 0.8)) * 100, 100 - Math.min((capacity.currentLoad / (capacity.maxCapacity * 0.8)) * 100, 100))}%`,
                             background: `repeating-linear-gradient(
                               45deg,
-                              ${getLoadColor(Math.min(((capacity.currentLoad + componentLoad) / capacity.maxCapacity) * 100, 100))},
-                              ${getLoadColor(Math.min(((capacity.currentLoad + componentLoad) / capacity.maxCapacity) * 100, 100))} 2px,
+                              ${getLoadColor(capacityCheck.analysis.utilizationPercent)},
+                              ${getLoadColor(capacityCheck.analysis.utilizationPercent)} 2px,
                               transparent 2px,
                               transparent 4px
                             )`,
                             borderRadius: 1
                           }}
                         />
+                        {/* 80% mark indicator */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            left: '80%',
+                            top: 0,
+                            height: '100%',
+                            width: 2,
+                            bgcolor: 'rgba(0,0,0,0.3)',
+                          }}
+                        />
                       </Box>
-                      <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                        Adding this {formData.type} will use {formatLoad(componentLoad)} 
-                        ({(() => {
-                          // Detect if this is a double pole breaker (240V)
-                          const voltage = selectedCircuit.breaker_type === 'double' ? 240 : (selectedCircuit.voltage || 120);
-                          const current = (componentLoad / voltage).toFixed(1);
-                          return `${current}A at ${voltage}V`;
-                        })()})
+                      
+                      {/* Load details */}
+                      <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>
+                        Adding: {formatLoad(componentLoad)} ({capacityCheck.analysis.newAmperage.toFixed(1)}A at {circuitVoltage}V)
                       </Typography>
+                      
+                      {/* Capacity warning/recommendation */}
+                      <Box 
+                        sx={{ 
+                          mt: 1, 
+                          p: 1, 
+                          bgcolor: capacityCheck.severity === 'error' ? '#ffebee' : 
+                                   capacityCheck.severity === 'warning' ? '#fff3e0' : 
+                                   capacityCheck.severity === 'info' ? '#e3f2fd' : '#e8f5e9',
+                          borderRadius: 1,
+                          borderLeft: `3px solid ${statusColor}`
+                        }}
+                      >
+                        <Typography variant="caption" sx={{ color: statusColor, fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                          {capacityCheck.canAdd ? '✓ Can Add' : '⚠ Cannot Add Safely'}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {capacityCheck.recommendation}
+                        </Typography>
+                        {!capacityCheck.canAdd && (
+                          <Typography variant="caption" sx={{ display: 'block', mt: 1, fontStyle: 'italic' }} color="error">
+                            NEC requires circuits not exceed 80% continuous load capacity
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                   );
                 })()}

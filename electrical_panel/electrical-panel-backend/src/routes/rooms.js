@@ -39,8 +39,23 @@ const router = express.Router();
  */
 router.get('/', (req, res) => {
   const db = getDatabase();
+  const { floor_plan_id } = req.query;
   
-  db.all('SELECT * FROM rooms', [], (err, rows) => {
+  let query = 'SELECT * FROM rooms';
+  let params = [];
+  
+  // If floor_plan_id is provided, only return rooms used in that floor plan
+  if (floor_plan_id) {
+    query = `
+      SELECT DISTINCT r.* 
+      FROM rooms r
+      INNER JOIN entities e ON r.id = e.room_id
+      WHERE e.floor_plan_id = ?
+    `;
+    params = [floor_plan_id];
+  }
+  
+  db.all(query, params, (err, rows) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;

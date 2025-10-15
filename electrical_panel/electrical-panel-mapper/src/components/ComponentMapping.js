@@ -54,6 +54,7 @@ import ElectricalComponentLayer from './electrical/ElectricalComponentLayer';
 import PanelVisualization from './electrical/PanelVisualization';
 import ComponentPropertiesDialog from './electrical/ComponentPropertiesDialog';
 import LoadAnalysisPanel from './electrical/LoadAnalysisPanel';
+import HeaterPlanningTool from './electrical/HeaterPlanningTool';
 import { useComponentPlacement, ComponentPreview } from './electrical/ComponentPlacement';
 
 const ComponentMapping = ({
@@ -84,6 +85,9 @@ const ComponentMapping = ({
   // Component properties dialog
   const [propertiesDialog, setPropertiesDialog] = useState(false);
   const [editingComponent, setEditingComponent] = useState(null);
+
+  // Heater planning tool dialog
+  const [heaterPlanningOpen, setHeaterPlanningOpen] = useState(false);
 
   // Edit mode toggle
   const [editMode, setEditMode] = useState(false);
@@ -306,11 +310,32 @@ const ComponentMapping = ({
       // Load device types first (needed for component rendering)
       await deviceTypesService.fetchDeviceTypes();
 
-      // Load floor plan data (rooms)
+      // Load floor plan data (rooms) AND database room mappings
       const floorPlanResponse = await fetch(`${config.BACKEND_URL}/api/floor-plans/${project.id}`);
       if (floorPlanResponse.ok) {
         const floorPlan = await floorPlanResponse.json();
-        setRooms(floorPlan.rooms || []);
+        const jsonRooms = floorPlan.rooms || [];
+        
+        // Fetch database rooms to get the ID mapping
+        const dbRoomsResponse = await fetch(`${config.BACKEND_URL}/api/rooms?floor_plan_id=${project.id}`);
+        let roomsWithDbIds = jsonRooms;
+        
+        if (dbRoomsResponse.ok) {
+          const dbRooms = await dbRoomsResponse.json();
+          
+          // Map JSON rooms to include database IDs
+          // The database rooms have svg_ref = JSON room ID, and id = database integer ID
+          roomsWithDbIds = jsonRooms.map(jsonRoom => {
+            const dbRoom = dbRooms.find(dbr => dbr.svg_ref === jsonRoom.id);
+            return {
+              ...jsonRoom,
+              dbId: dbRoom ? dbRoom.id : null, // Add database ID for matching with components
+              label: jsonRoom.name || jsonRoom.label || `Room ${jsonRoom.id}` // Ensure label exists
+            };
+          });
+        }
+        
+        setRooms(roomsWithDbIds);
         if (floorPlan.view_box) {
           setViewBox(floorPlan.view_box);
         }
@@ -738,9 +763,20 @@ const ComponentMapping = ({
       <Box sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Load Analysis Section - Always Visible */}
         <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <CalculateIcon sx={{ mr: 1 }} />
-            <Typography variant="h6">Load Analysis</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <CalculateIcon sx={{ mr: 1 }} />
+              <Typography variant="h6">Load Analysis</Typography>
+            </Box>
+            <Button
+              variant="contained"
+              color="secondary"
+              size="small"
+              startIcon={<LocalFireDepartmentIcon />}
+              onClick={() => setHeaterPlanningOpen(true)}
+            >
+              Plan Heaters
+            </Button>
           </Box>
 
           {/* Embed LoadAnalysisPanel content directly */}
@@ -1346,6 +1382,15 @@ const ComponentMapping = ({
         circuits={circuits}
         components={electricalComponents}
         getComponentRoom={getComponentRoom}
+      />
+
+      {/* Heater Planning Tool */}
+      <HeaterPlanningTool
+        open={heaterPlanningOpen}
+        onClose={() => setHeaterPlanningOpen(false)}
+        rooms={rooms}
+        circuits={circuits}
+        components={electricalComponents}
       />
 
       {/* Context Menu */}
