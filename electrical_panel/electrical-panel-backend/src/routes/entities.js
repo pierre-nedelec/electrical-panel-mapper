@@ -309,7 +309,8 @@ router.put('/:id', (req, res) => {
     amperage,
     wattage,
     gfci,
-    properties
+    properties,
+    floor_plan_id
   } = req.body;
 
   // Log the incoming request
@@ -368,6 +369,11 @@ router.put('/:id', (req, res) => {
   if (properties !== undefined) {
     fields.push('properties = ?');
     values.push(JSON.stringify(properties));
+  }
+  if (floor_plan_id !== undefined) {
+    fields.push('floor_plan_id = ?');
+    values.push(floor_plan_id);
+    console.log(`🔧 Setting floor_plan_id to: ${floor_plan_id}`);
   }
 
   if (fields.length === 0) {

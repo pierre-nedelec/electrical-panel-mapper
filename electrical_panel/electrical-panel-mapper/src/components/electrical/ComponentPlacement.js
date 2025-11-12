@@ -139,7 +139,7 @@ export const useComponentPlacement = (
       x: previewComponent.x,
       y: previewComponent.y,
       room_id: previewComponent.room_id,
-      device_type_id: selectedTool.device_type_id || 1, // Default to first device type
+      // Don't set device_type_id here - let parent component resolve it from type
       label: getDefaultLabel(selectedTool.id, isAppliance ? defaultApplianceType : null),
       wattage: getDefaultWattage(selectedTool.id, isAppliance ? defaultApplianceType : null),
       voltage: 120, // Default voltage

@@ -28,6 +28,7 @@ import {
 import { canAddToCircuit } from '../../utils/circuitCapacityChecker';
 import { getComponentType, getApplianceType, getDeviceTypeId } from '../../utils/deviceTypeMapping';
 import deviceTypesService from '../../services/deviceTypesService';
+import config from '../../config';
 
 const ComponentPropertiesDialog = ({ 
   open, 
@@ -56,27 +57,36 @@ const ComponentPropertiesDialog = ({
   });
 
   const [applianceTypes, setApplianceTypes] = useState([]);
+  const [showNewApplianceDialog, setShowNewApplianceDialog] = useState(false);
+  const [newApplianceData, setNewApplianceData] = useState({
+    name: '',
+    default_wattage: 0,
+    default_voltage: 120,
+    default_amperage: 15,
+    requires_gfci: false,
+    requires_afci: false
+  });
 
   // Load device types and populate appliance options
-  useEffect(() => {
-    const loadDeviceTypes = async () => {
-      await deviceTypesService.fetchDeviceTypes();
-      
-      // Get all appliance device types from the API
-      const applianceDeviceTypes = deviceTypesService.getDeviceTypesByCategory('appliance')
-        .concat(deviceTypesService.getDeviceTypesByCategory('heating'));
-      
-      // Convert to appliance type options
-      const options = applianceDeviceTypes.map(deviceType => ({
-        value: deviceTypesService.getApplianceType(deviceType.id),
-        label: deviceType.name,
-        deviceTypeId: deviceType.id
-      }));
-      
-      setApplianceTypes(options);
-    };
+  const loadApplianceTypes = async () => {
+    await deviceTypesService.fetchDeviceTypes();
     
-    loadDeviceTypes();
+    // Get all appliance device types from the API
+    const applianceDeviceTypes = deviceTypesService.getDeviceTypesByCategory('appliance')
+      .concat(deviceTypesService.getDeviceTypesByCategory('heating'));
+    
+    // Convert to appliance type options
+    const options = applianceDeviceTypes.map(deviceType => ({
+      value: deviceTypesService.getApplianceType(deviceType.id),
+      label: deviceType.name,
+      deviceTypeId: deviceType.id
+    }));
+    
+    setApplianceTypes(options);
+  };
+
+  useEffect(() => {
+    loadApplianceTypes();
   }, []);
 
   useEffect(() => {
@@ -86,7 +96,10 @@ const ComponentPropertiesDialog = ({
       
       // Convert device_type_id back to UI type
       const componentType = getComponentType(component.device_type_id);
-      const applianceType = componentType === 'appliance' ? getApplianceType(component.device_type_id) : 'baseboard_heater';
+      // Only get appliance_type if component is actually an appliance
+      const applianceType = componentType === 'appliance' 
+        ? getApplianceType(component.device_type_id) 
+        : (component.properties?.appliance_type || 'baseboard_heater');
       
       setFormData({
         label: component.label || '',
@@ -100,7 +113,7 @@ const ComponentPropertiesDialog = ({
         gfci: component.gfci || false,
         dedicated: component.dedicated || false,
         switched: component.switched || false,
-        appliance_type: applianceType
+        appliance_type: applianceType // Only used when type === 'appliance'
       });
     }
   }, [component, getComponentRoom]);
@@ -132,6 +145,66 @@ const ComponentPropertiesDialog = ({
 
       return newFormData;
     });
+  };
+
+  const handleCreateNewAppliance = async () => {
+    if (!newApplianceData.name.trim()) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${config.BACKEND_URL}/api/device-types`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newApplianceData.name.trim(),
+          category: 'appliance',
+          default_wattage: newApplianceData.default_wattage || 0,
+          default_voltage: newApplianceData.default_voltage || 120,
+          default_amperage: newApplianceData.default_amperage || 15,
+          requires_gfci: newApplianceData.requires_gfci || false,
+          requires_afci: newApplianceData.requires_afci || false
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create appliance type');
+      }
+
+      const newDeviceType = await response.json();
+      
+      // Refresh device types cache
+      deviceTypesService.deviceTypes = null;
+      await loadApplianceTypes();
+      
+      // Set the new appliance type as selected
+      const newApplianceType = deviceTypesService.getApplianceType(newDeviceType.id);
+      handleChange('appliance_type', newApplianceType);
+      
+      // Update label if it's still default
+      if (!formData.label || formData.label === 'Appliance') {
+        handleChange('label', newDeviceType.name);
+      }
+      
+      // Update wattage if default was set
+      if (newDeviceType.default_wattage > 0 && formData.wattage === 0) {
+        handleChange('wattage', newDeviceType.default_wattage);
+      }
+      
+      setShowNewApplianceDialog(false);
+      setNewApplianceData({
+        name: '',
+        default_wattage: 0,
+        default_voltage: 120,
+        default_amperage: 15,
+        requires_gfci: false,
+        requires_afci: false
+      });
+    } catch (error) {
+      console.error('Error creating appliance type:', error);
+      alert(`Failed to create appliance type: ${error.message}`);
+    }
   };
 
   const handleSave = () => {
@@ -220,8 +293,14 @@ const ComponentPropertiesDialog = ({
               <FormControl fullWidth size="small">
                 <InputLabel>Appliance Type</InputLabel>
                 <Select
-                  value={formData.appliance_type}
-                  onChange={(e) => handleChange('appliance_type', e.target.value)}
+                  value={formData.appliance_type === '__other__' ? '' : formData.appliance_type}
+                  onChange={(e) => {
+                    if (e.target.value === '__other__') {
+                      setShowNewApplianceDialog(true);
+                    } else {
+                      handleChange('appliance_type', e.target.value);
+                    }
+                  }}
                   label="Appliance Type"
                 >
                   {applianceTypes.map((option) => (
@@ -229,6 +308,9 @@ const ComponentPropertiesDialog = ({
                       {option.label}
                     </MenuItem>
                   ))}
+                  <MenuItem value="__other__">
+                    <em>➕ Other (Create New Appliance Type)</em>
+                  </MenuItem>
                 </Select>
               </FormControl>
             </Box>
@@ -640,6 +722,109 @@ const ComponentPropertiesDialog = ({
           Save Changes
         </Button>
       </DialogActions>
+
+      {/* New Appliance Type Dialog */}
+      <Dialog 
+        open={showNewApplianceDialog} 
+        onClose={() => setShowNewApplianceDialog(false)}
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>Create New Appliance Type</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="Appliance Name"
+              fullWidth
+              required
+              value={newApplianceData.name}
+              onChange={(e) => setNewApplianceData({ ...newApplianceData, name: e.target.value })}
+              placeholder="e.g., Electric Vehicle Charger"
+              size="small"
+              autoFocus
+            />
+            
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Default Wattage (W)"
+                type="number"
+                sx={{ flex: 1 }}
+                value={newApplianceData.default_wattage}
+                onChange={(e) => setNewApplianceData({ ...newApplianceData, default_wattage: parseInt(e.target.value) || 0 })}
+                size="small"
+                InputProps={{
+                  inputProps: { min: 0, max: 50000 }
+                }}
+              />
+              
+              <TextField
+                label="Default Voltage (V)"
+                type="number"
+                sx={{ flex: 1 }}
+                value={newApplianceData.default_voltage}
+                onChange={(e) => setNewApplianceData({ ...newApplianceData, default_voltage: parseInt(e.target.value) || 120 })}
+                size="small"
+                InputProps={{
+                  inputProps: { min: 120, max: 240, step: 120 }
+                }}
+              />
+              
+              <TextField
+                label="Default Amperage (A)"
+                type="number"
+                sx={{ flex: 1 }}
+                value={newApplianceData.default_amperage}
+                onChange={(e) => setNewApplianceData({ ...newApplianceData, default_amperage: parseInt(e.target.value) || 15 })}
+                size="small"
+                InputProps={{
+                  inputProps: { min: 15, max: 100, step: 5 }
+                }}
+              />
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={newApplianceData.requires_gfci}
+                    onChange={(e) => setNewApplianceData({ ...newApplianceData, requires_gfci: e.target.checked })}
+                    size="small"
+                  />
+                }
+                label="Requires GFCI"
+              />
+              
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={newApplianceData.requires_afci}
+                    onChange={(e) => setNewApplianceData({ ...newApplianceData, requires_afci: e.target.checked })}
+                    size="small"
+                  />
+                }
+                label="Requires AFCI"
+              />
+            </Box>
+
+            <Typography variant="caption" color="textSecondary">
+              This will create a new appliance type that can be reused in future projects.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowNewApplianceDialog(false)} color="secondary">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleCreateNewAppliance} 
+            variant="contained" 
+            color="primary"
+            disabled={!newApplianceData.name.trim()}
+          >
+            Create Appliance Type
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 };
