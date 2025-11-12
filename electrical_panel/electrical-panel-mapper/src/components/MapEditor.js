@@ -29,7 +29,7 @@ function MapEditor({ toggleDarkMode, darkMode }) {
   const { getRoomName, saveRoomLabel } = useRoomLabels(svgRef);
 
   useEffect(() => {
-    fetch(`${config.BACKEND_URL}/entities`)
+    fetch(`${config.BACKEND_URL}/api/entities`)
       .then((response) => response.json())
       .then((data) => setPlacedEntities(data))
       .catch((err) => console.error('Error fetching entities:', err));
@@ -64,7 +64,7 @@ function MapEditor({ toggleDarkMode, darkMode }) {
       breaker: `Breaker ${Math.floor(Math.random() * 10) + 1}`,
     };
 
-    fetch(`${config.BACKEND_URL}/entities`, {
+    fetch(`${config.BACKEND_URL}/api/entities`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -18,7 +18,7 @@ const useRoomLabeling = () => {
 
   const handleLabelSave = (roomName) => {
     if (selectedRectId) {
-      fetch(`${config.BACKEND_URL}/rooms`, {
+      fetch(`${config.BACKEND_URL}/api/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

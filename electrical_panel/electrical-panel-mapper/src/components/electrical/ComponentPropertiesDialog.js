@@ -23,6 +23,9 @@ import {
   getLoadColor,
   calculateComponentLoad 
 } from '../../utils/loadCalculations';
+import { canAddToCircuit } from '../../utils/circuitCapacityChecker';
+import { getComponentType, getApplianceType, getDeviceTypeId } from '../../utils/deviceTypeMapping';
+import deviceTypesService from '../../services/deviceTypesService';
 
 const ComponentPropertiesDialog = ({ 
   open, 
@@ -49,45 +52,60 @@ const ComponentPropertiesDialog = ({
     appliance_type: 'baseboard_heater' // Default appliance type
   });
 
+  const [applianceTypes, setApplianceTypes] = useState([]);
+
+  // Load device types and populate appliance options
+  useEffect(() => {
+    const loadDeviceTypes = async () => {
+      await deviceTypesService.fetchDeviceTypes();
+      
+      // Get all appliance device types from the API
+      const applianceDeviceTypes = deviceTypesService.getDeviceTypesByCategory('appliance')
+        .concat(deviceTypesService.getDeviceTypesByCategory('heating'));
+      
+      // Convert to appliance type options
+      const options = applianceDeviceTypes.map(deviceType => ({
+        value: deviceTypesService.getApplianceType(deviceType.id),
+        label: deviceType.name,
+        deviceTypeId: deviceType.id
+      }));
+      
+      setApplianceTypes(options);
+    };
+    
+    loadDeviceTypes();
+  }, []);
+
   useEffect(() => {
     if (component) {
       // Automatically determine room based on component position
       const currentRoom = getComponentRoom ? getComponentRoom(component.x, component.y) : null;
       
+      // Convert device_type_id back to UI type
+      const componentType = getComponentType(component.device_type_id);
+      const applianceType = componentType === 'appliance' ? getApplianceType(component.device_type_id) : 'baseboard_heater';
+      
       setFormData({
         label: component.label || '',
-        type: component.type || 'outlet',
+        type: componentType,
         voltage: component.voltage || 120,
         amperage: component.amperage || 20,
+        wattage: component.wattage || 0, // Initialize wattage from component
         room_id: currentRoom?.id || component.room_id || '',
         circuit_id: component.circuit_id || '',
         notes: component.notes || '',
         gfci: component.gfci || false,
         dedicated: component.dedicated || false,
         switched: component.switched || false,
-        appliance_type: component.appliance_type || component.properties?.appliance_type || 'baseboard_heater'
+        appliance_type: applianceType
       });
     }
   }, [component, getComponentRoom]);
 
   const getDefaultApplianceName = (applianceType) => {
-    switch (applianceType) {
-      case 'baseboard_heater': return 'Baseboard Heater';
-      case 'jacuzzi': return 'Jacuzzi';
-      case 'hvac_unit': return 'HVAC Unit';
-      case 'ceiling_fan': return 'Ceiling Fan';
-      case 'electric_water_heater': return 'Water Heater';
-      case 'electric_dryer': return 'Dryer';
-      case 'electric_range': return 'Range/Oven';
-      case 'dishwasher': return 'Dishwasher';
-      case 'garbage_disposal': return 'Garbage Disposal';
-      case 'refrigerator': return 'Refrigerator';
-      case 'microwave': return 'Microwave';
-      case 'air_conditioner': return 'Air Conditioner';
-      case 'heat_pump': return 'Heat Pump';
-      case 'floor_heating': return 'Floor Heating';
-      default: return 'Appliance';
-    }
+    // Find the appliance type in our loaded options
+    const option = applianceTypes.find(opt => opt.value === applianceType);
+    return option ? option.label : 'Appliance';
   };
 
   const handleChange = (field, value) => {
@@ -114,14 +132,22 @@ const ComponentPropertiesDialog = ({
   };
 
   const handleSave = () => {
+    const deviceTypeId = getDeviceTypeId(formData.type, formData.appliance_type);
+    
     const updatedComponent = {
       ...component,
-      ...formData,
-      // Store appliance-specific properties in a properties object
+      device_type_id: deviceTypeId,
+      label: formData.label,
+      voltage: formData.voltage,
+      amperage: formData.amperage,
+      wattage: formData.wattage,
+      gfci: formData.gfci,
+      room_id: formData.room_id,
+      circuit_id: formData.circuit_id,
+      // Store only appliance-specific properties that don't have dedicated columns
       properties: {
         ...component?.properties,
         appliance_type: formData.appliance_type,
-        gfci: formData.gfci,
         dedicated: formData.dedicated,
         switched: formData.switched
       },
@@ -193,20 +219,11 @@ const ComponentPropertiesDialog = ({
                   onChange={(e) => handleChange('appliance_type', e.target.value)}
                   label="Appliance Type"
                 >
-                  <MenuItem value="baseboard_heater">🔥 Baseboard Heater</MenuItem>
-                  <MenuItem value="jacuzzi">🛁 Jacuzzi/Hot Tub</MenuItem>
-                  <MenuItem value="hvac_unit">💨 HVAC Unit</MenuItem>
-                  <MenuItem value="ceiling_fan">🌪️ Ceiling Fan</MenuItem>
-                  <MenuItem value="electric_water_heater">🚿 Water Heater</MenuItem>
-                  <MenuItem value="electric_dryer">👕 Electric Dryer</MenuItem>
-                  <MenuItem value="electric_range">🍳 Range/Oven</MenuItem>
-                  <MenuItem value="dishwasher">🧽 Dishwasher</MenuItem>
-                  <MenuItem value="garbage_disposal">🗑️ Garbage Disposal</MenuItem>
-                  <MenuItem value="refrigerator">❄️ Refrigerator</MenuItem>
-                  <MenuItem value="microwave">📻 Microwave</MenuItem>
-                  <MenuItem value="air_conditioner">🌬️ Air Conditioner</MenuItem>
-                  <MenuItem value="heat_pump">♨️ Heat Pump</MenuItem>
-                  <MenuItem value="floor_heating">🔥 Floor Heating</MenuItem>
+                  {applianceTypes.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Box>
@@ -283,8 +300,10 @@ const ComponentPropertiesDialog = ({
               sx={{ flex: 1 }}
               size="small"
               value={formData.wattage || (() => {
-                // Show default wattage if no custom value is set
+                // Show default wattage if no custom value is set  
                 const defaultWattage = calculateComponentLoad({ 
+                  device_type_id: getDeviceTypeId(formData.type, formData.appliance_type),
+                  wattage: 0, // Force using device type default
                   type: formData.type, 
                   properties: {
                     appliance_type: formData.appliance_type,
@@ -292,7 +311,7 @@ const ComponentPropertiesDialog = ({
                     dedicated: formData.dedicated,
                     switched: formData.switched
                   }
-                });
+                }, deviceTypesService);
                 return defaultWattage;
               })()}
               onChange={(e) => handleChange('wattage', parseInt(e.target.value) || 0)}
@@ -364,7 +383,7 @@ const ComponentPropertiesDialog = ({
               </Select>
             </FormControl>
             
-            {/* Circuit Load Indicator */}
+            {/* Circuit Load Indicator with Capacity Check */}
             {formData.circuit_id && (
               <Box sx={{ mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                 {(() => {
@@ -379,31 +398,51 @@ const ComponentPropertiesDialog = ({
                     amperage: selectedCircuit.amperage || 20,
                     voltage: circuitVoltage,
                     components: circuitComponents
-                  });
+                  }, deviceTypesService);
                   
-                  const componentLoad = calculateComponentLoad({ 
-                    type: formData.type, 
+                  const newComponent = { 
+                    device_type_id: getDeviceTypeId(formData.type, formData.appliance_type),
                     wattage: formData.wattage,
+                    type: formData.type, 
                     properties: {
                       appliance_type: formData.appliance_type,
                       gfci: formData.gfci,
                       dedicated: formData.dedicated,
                       switched: formData.switched
                     }
-                  });
+                  };
+                  
+                  const componentLoad = calculateComponentLoad(newComponent, deviceTypesService);
+                  
+                  // Use enhanced capacity checker
+                  const capacityCheck = canAddToCircuit(
+                    selectedCircuit, 
+                    circuitComponents, 
+                    newComponent, 
+                    deviceTypesService
+                  );
+                  
+                  // Determine status color
+                  const statusColor = {
+                    'success': '#4caf50',
+                    'info': '#2196f3',
+                    'warning': '#ff9800',
+                    'error': '#f44336'
+                  }[capacityCheck.severity] || '#757575';
                   
                   return (
                     <Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                         <Typography variant="caption" color="textSecondary">
-                          Circuit Load: {formatLoad(capacity.currentLoad)} / {formatLoad(capacity.maxCapacity)}
+                          Circuit Load: {formatLoad(capacity.currentLoad)} / {formatLoad(capacity.maxCapacity * 0.8)}
                         </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {capacity.utilization}%
+                        <Typography variant="caption" sx={{ color: statusColor, fontWeight: 'bold' }}>
+                          {capacityCheck.analysis.utilizationPercent}%
                         </Typography>
                       </Box>
+                      
                       {/* Custom stacked progress bar showing existing vs new component load */}
-                      <Box sx={{ position: 'relative', height: 6, borderRadius: 1, bgcolor: 'grey.200', overflow: 'hidden' }}>
+                      <Box sx={{ position: 'relative', height: 8, borderRadius: 1, bgcolor: 'grey.200', overflow: 'hidden', mb: 1 }}>
                         {/* Existing components load (solid) */}
                         <Box
                           sx={{
@@ -411,7 +450,7 @@ const ComponentPropertiesDialog = ({
                             left: 0,
                             top: 0,
                             height: '100%',
-                            width: `${Math.min((capacity.currentLoad / capacity.maxCapacity) * 100, 100)}%`,
+                            width: `${Math.min((capacity.currentLoad / (capacity.maxCapacity * 0.8)) * 100, 100)}%`,
                             bgcolor: getLoadColor(capacity.utilization),
                             borderRadius: 1
                           }}
@@ -420,30 +459,62 @@ const ComponentPropertiesDialog = ({
                         <Box
                           sx={{
                             position: 'absolute',
-                            left: `${Math.min((capacity.currentLoad / capacity.maxCapacity) * 100, 100)}%`,
+                            left: `${Math.min((capacity.currentLoad / (capacity.maxCapacity * 0.8)) * 100, 100)}%`,
                             top: 0,
                             height: '100%',
-                            width: `${Math.min((componentLoad / capacity.maxCapacity) * 100, 100 - Math.min((capacity.currentLoad / capacity.maxCapacity) * 100, 100))}%`,
+                            width: `${Math.min((componentLoad / (capacity.maxCapacity * 0.8)) * 100, 100 - Math.min((capacity.currentLoad / (capacity.maxCapacity * 0.8)) * 100, 100))}%`,
                             background: `repeating-linear-gradient(
                               45deg,
-                              ${getLoadColor(Math.min(((capacity.currentLoad + componentLoad) / capacity.maxCapacity) * 100, 100))},
-                              ${getLoadColor(Math.min(((capacity.currentLoad + componentLoad) / capacity.maxCapacity) * 100, 100))} 2px,
+                              ${getLoadColor(capacityCheck.analysis.utilizationPercent)},
+                              ${getLoadColor(capacityCheck.analysis.utilizationPercent)} 2px,
                               transparent 2px,
                               transparent 4px
                             )`,
                             borderRadius: 1
                           }}
                         />
+                        {/* 80% mark indicator */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            left: '80%',
+                            top: 0,
+                            height: '100%',
+                            width: 2,
+                            bgcolor: 'rgba(0,0,0,0.3)',
+                          }}
+                        />
                       </Box>
-                      <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                        Adding this {formData.type} will use {formatLoad(componentLoad)} 
-                        ({(() => {
-                          // Detect if this is a double pole breaker (240V)
-                          const voltage = selectedCircuit.breaker_type === 'double' ? 240 : (selectedCircuit.voltage || 120);
-                          const current = (componentLoad / voltage).toFixed(1);
-                          return `${current}A at ${voltage}V`;
-                        })()})
+                      
+                      {/* Load details */}
+                      <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>
+                        Adding: {formatLoad(componentLoad)} ({capacityCheck.analysis.newAmperage.toFixed(1)}A at {circuitVoltage}V)
                       </Typography>
+                      
+                      {/* Capacity warning/recommendation */}
+                      <Box 
+                        sx={{ 
+                          mt: 1, 
+                          p: 1, 
+                          bgcolor: capacityCheck.severity === 'error' ? '#ffebee' : 
+                                   capacityCheck.severity === 'warning' ? '#fff3e0' : 
+                                   capacityCheck.severity === 'info' ? '#e3f2fd' : '#e8f5e9',
+                          borderRadius: 1,
+                          borderLeft: `3px solid ${statusColor}`
+                        }}
+                      >
+                        <Typography variant="caption" sx={{ color: statusColor, fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                          {capacityCheck.canAdd ? '✓ Can Add' : '⚠ Cannot Add Safely'}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {capacityCheck.recommendation}
+                        </Typography>
+                        {!capacityCheck.canAdd && (
+                          <Typography variant="caption" sx={{ display: 'block', mt: 1, fontStyle: 'italic' }} color="error">
+                            NEC requires circuits not exceed 80% continuous load capacity
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                   );
                 })()}

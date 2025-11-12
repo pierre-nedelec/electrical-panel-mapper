@@ -32,7 +32,7 @@ const useEntityPlacement = () => {
       y: previewPosition.y,
     };
 
-    fetch(`${config.BACKEND_URL}/entities`, {
+    fetch(`${config.BACKEND_URL}/api/entities`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ const useEntityPlacement = () => {
   };
 
   const handleFetchEntities = useCallback(() => {
-    fetch(`${config.BACKEND_URL}/entities`)
+    fetch(`${config.BACKEND_URL}/api/entities`)
       .then((response) => response.json())
       .then((data) => setPlacedEntities(data))
       .catch((err) => console.error('Error fetching entities:', err));

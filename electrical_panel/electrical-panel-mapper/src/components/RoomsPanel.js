@@ -23,7 +23,7 @@ function RoomsPanel({ toggleDarkMode, darkMode }) {
 
   useEffect(() => {
     // Fetch rooms data
-    fetch(`${config.BACKEND_URL}/rooms`)
+    fetch(`${config.BACKEND_URL}/api/rooms`)
       .then(response => response.json())
       .then(data => setRooms(data))
       .catch(err => console.error('Error fetching rooms:', err));
@@ -59,7 +59,7 @@ function RoomsPanel({ toggleDarkMode, darkMode }) {
   const handleSaveRoomLabel = (roomName) => {
     if (selectedRoom) {
       // Update room name on the backend
-      fetch(`${config.BACKEND_URL}/rooms/${selectedRoom.id}`, {
+      fetch(`${config.BACKEND_URL}/api/rooms/${selectedRoom.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

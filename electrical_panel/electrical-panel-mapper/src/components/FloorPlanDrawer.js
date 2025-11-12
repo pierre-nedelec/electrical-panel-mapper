@@ -15,8 +15,8 @@ import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import ElectricalServicesIcon from '@mui/icons-material/ElectricalServices';
 import CheckIcon from '@mui/icons-material/Check';
-import { 
-  loadFloorPlansFromServer, 
+import {
+  loadFloorPlansFromServer,
   deleteFloorPlanFromServer,
   saveFloorPlanLocal,
   loadFloorPlansLocal,
@@ -30,9 +30,10 @@ import PanelVisualization from './electrical/PanelVisualization';
 // Circuit visualization removed for UI simplicity
 // CircuitManager removed for UI simplicity
 import { useComponentPlacement, ComponentPreview } from './electrical/ComponentPlacement';
+import config from '../config';
 
-const FloorPlanDrawer = ({ 
-  onSaveFloorPlan, 
+const FloorPlanDrawer = ({
+  onSaveFloorPlan,
   initialFloorPlan = null,
   onProceedToPanels = null,
   showProceedButton = false,
@@ -55,7 +56,7 @@ const FloorPlanDrawer = ({
   const [planToDelete, setPlanToDelete] = useState(null);
   const [currentPlan, setCurrentPlan] = useState(initialFloorPlan || { id: null, name: 'Untitled Floor Plan', rooms: [] });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [saveDialog, setSaveDialog] = useState(false);
+      const [saveDialog, setSaveDialog] = useState(false);
   const [loadDialog, setLoadDialog] = useState(false);
 
   const [showHelpDialog, setShowHelpDialog] = useState(false);
@@ -77,10 +78,10 @@ const FloorPlanDrawer = ({
   const [scaleSettings, setScaleSettings] = useState(() => {
     // Load from localStorage or use defaults
     const saved = localStorage.getItem('floorPlanScaleSettings');
-    return saved ? JSON.parse(saved) : { 
-      pixelsPerUnit: 20, 
-      unit: 'ft', 
-      showDimensions: true 
+    return saved ? JSON.parse(saved) : {
+      pixelsPerUnit: 20,
+      unit: 'ft',
+      showDimensions: true
     };
   });
   const [showScaleDialog, setShowScaleDialog] = useState(false);
@@ -137,7 +138,7 @@ const FloorPlanDrawer = ({
         const parsed = JSON.parse(autoSaveData);
         const saveTime = new Date(parsed.timestamp);
         const timeDiff = (new Date() - saveTime) / (1000 * 60); // minutes
-        
+
         if (timeDiff < 60 && parsed.rooms.length > 0) { // Within last hour
           showNotification(
             `Found auto-saved work from ${Math.round(timeDiff)} minutes ago.`,
@@ -176,7 +177,7 @@ const FloorPlanDrawer = ({
   // Auto-save to localStorage every 30 seconds
   useEffect(() => {
     if (rooms.length === 0) return;
-    
+
     const autoSaveInterval = setInterval(() => {
       const autoSaveData = {
         rooms,
@@ -194,7 +195,7 @@ const FloorPlanDrawer = ({
     const handleKeyDown = (event) => {
       // Only handle shortcuts when not typing in an input
       if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-      
+
       switch (event.key) {
         case ' ':
           // Space bar activates pan mode
@@ -307,7 +308,7 @@ const FloorPlanDrawer = ({
   // Helper functions
   const moveRoom = (deltaX, deltaY, forceDisableSnap = false) => {
     if (!selectedRoom) return;
-    
+
     const newRooms = rooms.map(room =>
       room.id === selectedRoom.id
         ? {
@@ -323,7 +324,7 @@ const FloorPlanDrawer = ({
 
   const handleDuplicateRoom = () => {
     if (!selectedRoom) return;
-    
+
     const newRoom = {
       ...selectedRoom,
       id: `room-${Date.now()}`,
@@ -331,7 +332,7 @@ const FloorPlanDrawer = ({
       x: selectedRoom.x + 20,
       y: selectedRoom.y + 20
     };
-    
+
     const newRooms = [...rooms, newRoom];
     setRooms(newRooms);
     saveToHistory(newRooms, `Duplicated room "${selectedRoom.name}"`);
@@ -362,10 +363,10 @@ const FloorPlanDrawer = ({
     // Parse inputs like "12ft", "3.5m", "24in", "150cm", or just "12"
     const match = input.match(/^(\d+\.?\d*)\s*(ft|in|m|cm)?$/i);
     if (!match) return null;
-    
+
     const value = parseFloat(match[1]);
     const inputUnit = match[2]?.toLowerCase() || scaleSettings.unit;
-    
+
     // Convert to current units if needed
     let convertedValue = value;
     if (inputUnit !== scaleSettings.unit) {
@@ -378,7 +379,7 @@ const FloorPlanDrawer = ({
       };
       convertedValue = value * (conversions[inputUnit]?.[scaleSettings.unit] || 1);
     }
-    
+
     return convertedValue;
   };
 
@@ -386,23 +387,23 @@ const FloorPlanDrawer = ({
   const findAdjacentRooms = (targetRoom, edge) => {
     const tolerance = 5; // pixels
     const adjacent = [];
-    
+
     for (const room of rooms) {
       if (room.id === targetRoom.id) continue;
-      
+
       let isAdjacent = false;
       let relationship = null;
-      
+
       if (edge === 'width') {
         // Check left and right edges
         const targetLeft = targetRoom.x;
         const targetRight = targetRoom.x + targetRoom.width;
         const roomLeft = room.x;
         const roomRight = room.x + room.width;
-        
+
         // Check if rooms share a vertical edge and overlap vertically
         const verticalOverlap = !(targetRoom.y + targetRoom.height <= room.y || targetRoom.y >= room.y + room.height);
-        
+
         if (verticalOverlap) {
           if (Math.abs(targetRight - roomLeft) < tolerance) {
             isAdjacent = true;
@@ -418,10 +419,10 @@ const FloorPlanDrawer = ({
         const targetBottom = targetRoom.y + targetRoom.height;
         const roomTop = room.y;
         const roomBottom = room.y + room.height;
-        
+
         // Check if rooms share a horizontal edge and overlap horizontally
         const horizontalOverlap = !(targetRoom.x + targetRoom.width <= room.x || targetRoom.x >= room.x + room.width);
-        
+
         if (horizontalOverlap) {
           if (Math.abs(targetBottom - roomTop) < tolerance) {
             isAdjacent = true;
@@ -432,23 +433,23 @@ const FloorPlanDrawer = ({
           }
         }
       }
-      
+
       if (isAdjacent) {
         adjacent.push({ room, relationship });
       }
     }
-    
+
     return adjacent;
   };
 
   // Enhanced snapping that includes room corners and edges
   const snapToRoomsAndGrid = (x, y, forceDisable = false) => {
     if (!snapToGrid || forceDisable || isShiftPressed) return { x, y };
-    
+
     const snapDistance = 10; // pixels
     let snappedX = x;
     let snappedY = y;
-    
+
     // First try to snap to room corners and edges
     for (const room of rooms) {
       const roomCorners = [
@@ -457,14 +458,14 @@ const FloorPlanDrawer = ({
         { x: room.x, y: room.y + room.height }, // bottom-left
         { x: room.x + room.width, y: room.y + room.height }, // bottom-right
       ];
-      
+
       // Snap to corners
       for (const corner of roomCorners) {
         if (Math.abs(x - corner.x) < snapDistance && Math.abs(y - corner.y) < snapDistance) {
           return { x: corner.x, y: corner.y };
         }
       }
-      
+
       // Snap to edges
       // Top/bottom edges
       if (Math.abs(y - room.y) < snapDistance && x >= room.x - snapDistance && x <= room.x + room.width + snapDistance) {
@@ -472,7 +473,7 @@ const FloorPlanDrawer = ({
       } else if (Math.abs(y - (room.y + room.height)) < snapDistance && x >= room.x - snapDistance && x <= room.x + room.width + snapDistance) {
         snappedY = room.y + room.height;
       }
-      
+
       // Left/right edges
       if (Math.abs(x - room.x) < snapDistance && y >= room.y - snapDistance && y <= room.y + room.height + snapDistance) {
         snappedX = room.x;
@@ -480,11 +481,11 @@ const FloorPlanDrawer = ({
         snappedX = room.x + room.width;
       }
     }
-    
+
     // If no room snapping occurred, fall back to grid snapping
     if (snappedX === x) snappedX = snapToGridIfEnabled(x, forceDisable);
     if (snappedY === y) snappedY = snapToGridIfEnabled(y, forceDisable);
-    
+
     return { x: snappedX, y: snappedY };
   };
 
@@ -494,18 +495,18 @@ const FloorPlanDrawer = ({
       description: actionDescription,
       timestamp: Date.now()
     };
-    
+
     // Remove any actions after current index (when undoing then doing new action)
     const newHistory = actionHistory.slice(0, historyIndex + 1);
     newHistory.push(newAction);
-    
+
     // Keep only last 50 actions to prevent memory issues
     if (newHistory.length > 50) {
       newHistory.shift();
     } else {
       setHistoryIndex(historyIndex + 1);
     }
-    
+
     setActionHistory(newHistory);
   };
 
@@ -546,7 +547,7 @@ const FloorPlanDrawer = ({
 
   const handleDimensionSave = () => {
     if (!editingDimension) return;
-    
+
     const newUnits = parseDimensionInput(dimensionInput);
     if (newUnits === null) {
       showNotification('Invalid dimension format. Use formats like "12ft", "3.5m", or "24"', 'error');
@@ -560,7 +561,7 @@ const FloorPlanDrawer = ({
     // Check if this dimension change will actually affect other rooms
     const oldValue = editingDimension.edge === 'width' ? targetRoom.width : targetRoom.height;
     const delta = newPixels - oldValue;
-    
+
     // Find adjacent rooms that would be affected by this specific change
     const adjacentRooms = findAdjacentRooms(targetRoom, editingDimension.edge);
     const affectedRooms = adjacentRooms.filter(({ relationship }) => {
@@ -570,11 +571,11 @@ const FloorPlanDrawer = ({
         return relationship === 'right-to-left' && delta !== 0;
       } else {
         // Height changes only affect rooms when the room is growing/shrinking downward
-        // and there's a room touching the bottom edge (bottom-to-top relationship) 
+        // and there's a room touching the bottom edge (bottom-to-top relationship)
         return relationship === 'bottom-to-top' && delta !== 0;
       }
     });
-    
+
     if (affectedRooms.length > 0) {
       // Show constraint options
       setConstraintPreview({
@@ -593,25 +594,25 @@ const FloorPlanDrawer = ({
   const applyDimensionChange = (targetRoom, edge, newPixels, mode) => {
     const newRooms = [...rooms];
     const targetIndex = newRooms.findIndex(r => r.id === targetRoom.id);
-    
+
     if (targetIndex === -1) return;
-    
+
     const oldValue = edge === 'width' ? targetRoom.width : targetRoom.height;
     const delta = newPixels - oldValue;
-    
+
     // Update target room
     if (edge === 'width') {
       newRooms[targetIndex] = { ...targetRoom, width: newPixels };
     } else {
       newRooms[targetIndex] = { ...targetRoom, height: newPixels };
     }
-    
+
     if (mode === 'push-pull' && constraintPreview) {
       // Apply push/pull to adjacent rooms
       for (const { room, relationship } of constraintPreview.adjacentRooms) {
         const roomIndex = newRooms.findIndex(r => r.id === room.id);
         if (roomIndex === -1) continue;
-        
+
         if (edge === 'width') {
           if (relationship === 'right-to-left') {
             // Target's right edge is pushing room's left edge
@@ -627,10 +628,10 @@ const FloorPlanDrawer = ({
         }
       }
     }
-    
+
     setRooms(newRooms);
     saveToHistory(newRooms, `Changed ${targetRoom.name} ${edge} to ${formatDimension(newPixels)}`);
-    
+
     // Clear editing state
     setEditingDimension(null);
     setDimensionInput('');
@@ -647,43 +648,49 @@ const FloorPlanDrawer = ({
   const handleElectricalComponentPlaced = async (componentData) => {
     // Declare localComponent outside try-catch so it's accessible in catch block
     let localComponent;
-    
+
     try {
       // Add to local state immediately for responsiveness
       localComponent = {
         ...componentData,
         id: `temp-${Date.now()}`, // Temporary ID
       };
-      
+
       setElectricalComponents([...electricalComponents, localComponent]);
-      
+
       // Save to backend
       const savedComponent = await saveElectricalComponent(componentData);
-      
-      // Update with real ID from backend
-      setElectricalComponents(prev => 
-        prev.map(comp => 
-          comp.id === localComponent.id 
-            ? { ...savedComponent, ...componentData }
+
+      // Update with real ID from backend - FIX: Preserve backend data, only override specific frontend properties
+      setElectricalComponents(prev =>
+        prev.map(comp =>
+          comp.id === localComponent.id
+            ? { 
+                ...savedComponent, // Backend data (with proper wattage, circuit_id, etc.)
+                type: componentData.type, // Preserve frontend type
+                x: componentData.x, // Preserve frontend position
+                y: componentData.y,
+                properties: { ...savedComponent.properties, ...componentData.properties } // Merge properties
+              }
             : comp
         )
       );
-      
-      showNotification(`${componentData.type} added successfully`, 'success');
+
+      showNotification(`${componentData.type} added successfully (${savedComponent.wattage}W)`, 'success');
       setSelectedElectricalTool(null);
       clearPreview();
       setHasUnsavedChanges(true);
-      
+
     } catch (error) {
       console.error('Error placing electrical component:', error);
-      
+
       // Remove from local state if backend save failed (only if localComponent was created)
       if (localComponent) {
-        setElectricalComponents(prev => 
+        setElectricalComponents(prev =>
           prev.filter(comp => comp.id !== localComponent.id)
         );
       }
-      
+
       showNotification('Failed to add electrical component', 'error');
     }
   };
@@ -716,16 +723,31 @@ const FloorPlanDrawer = ({
         )
       );
 
-      // Update backend
-      await fetch(`http://localhost:3001/entities/${editingComponent.id}`, {
+      // Update backend with all electrical properties
+      const updatePayload = {
+        label: updatedComponent.label,
+        x: updatedComponent.x,
+        y: updatedComponent.y,
+        device_type_id: updatedComponent.device_type_id,
+        room_id: updatedComponent.room_id,
+        floor_plan_id: updatedComponent.floor_plan_id,
+        voltage: updatedComponent.voltage,
+        amperage: updatedComponent.amperage,
+        wattage: updatedComponent.wattage,
+        gfci: updatedComponent.gfci,
+        circuit_id: updatedComponent.circuit_id,
+        properties: updatedComponent.properties
+      };
+
+      await fetch(`${config.BACKEND_URL}/api/entities/${editingComponent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedComponent)
+        body: JSON.stringify(updatePayload)
       });
 
       showNotification(`${updatedComponent.type} updated`, 'success');
       setHasUnsavedChanges(true);
-      
+
     } catch (error) {
       console.error('Error updating component:', error);
       showNotification('Failed to update component', 'error');
@@ -749,34 +771,34 @@ const FloorPlanDrawer = ({
   const getSVGPoint = useCallback((event) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
-    
+
     const point = svg.createSVGPoint();
     point.x = event.clientX;
     point.y = event.clientY;
-    
+
     const transform = svg.getScreenCTM().inverse();
     const svgPoint = point.matrixTransform(transform);
-    
+
     return { x: svgPoint.x, y: svgPoint.y };
   }, []);
 
   const handleMouseDown = useCallback((event) => {
     event.preventDefault();
     const svgPoint = getSVGPoint(event);
-    
+
     // Check for middle mouse button or space+left click for panning
     if (event.button === 1 || (event.button === 0 && spaceKeyPressed.current)) {
       setIsPanning(true);
       setPanStart({ x: event.clientX, y: event.clientY });
       return;
     }
-    
+
     // Handle electrical mode
     if (currentMode === 'electrical' && selectedElectricalTool) {
       handleComponentPlacement(event, selectedElectricalTool, handleElectricalComponentPlaced);
       return;
     }
-    
+
     // Handle room mode
     if (currentMode === 'rooms') {
       if (mode === 'draw') {
@@ -788,9 +810,9 @@ const FloorPlanDrawer = ({
 
       // Check if clicking on a room for move/resize
       const clickedRoom = rooms.find(room => {
-        return svgPoint.x >= room.x && 
+        return svgPoint.x >= room.x &&
                svgPoint.x <= room.x + room.width &&
-               svgPoint.y >= room.y && 
+               svgPoint.y >= room.y &&
                svgPoint.y <= room.y + room.height;
       });
 
@@ -803,12 +825,12 @@ const FloorPlanDrawer = ({
           width: clickedRoom.width,
           height: clickedRoom.height
         });
-        
+
         // Check if clicking on resize handles
         const handleSize = 10;
         const rightHandle = svgPoint.x >= clickedRoom.x + clickedRoom.width - handleSize;
         const bottomHandle = svgPoint.y >= clickedRoom.y + clickedRoom.height - handleSize;
-        
+
         if (rightHandle || bottomHandle) {
           setMode('resize');
           setSelectedRoom(clickedRoom);
@@ -837,15 +859,15 @@ const FloorPlanDrawer = ({
     if (isPanning && panStart) {
       const deltaX = event.clientX - panStart.x;
       const deltaY = event.clientY - panStart.y;
-      
+
       const [x, y, width, height] = viewBox.split(' ').map(Number);
-      
+
       // Calculate pan speed based on current zoom level
       const panSpeed = width / 800; // Adjust pan speed based on zoom
-      
+
       const newX = x - deltaX * panSpeed;
       const newY = y - deltaY * panSpeed;
-      
+
       setViewBox(`${newX} ${newY} ${width} ${height}`);
       setPanStart({ x: event.clientX, y: event.clientY });
       return;
@@ -872,7 +894,7 @@ const FloorPlanDrawer = ({
         });
       } else if (mode === 'move' && selectedRoom && dragStart) {
         const snapped = snapToRoomsAndGrid(svgPoint.x - dragStart.x, svgPoint.y - dragStart.y);
-        
+
         setRooms(rooms.map(room =>
           room.id === selectedRoom.id
             ? { ...room, x: snapped.x, y: snapped.y }
@@ -880,21 +902,21 @@ const FloorPlanDrawer = ({
         ));
       } else if (mode === 'resize' && selectedRoom && dragStart && resizeHandle) {
         // Calculate new dimensions based on current mouse position
-        const newWidth = resizeHandle.rightHandle 
+        const newWidth = resizeHandle.rightHandle
           ? Math.max(scaleSettings.pixelsPerUnit, svgPoint.x - selectedRoom.x)
           : selectedRoom.width;
-        const newHeight = resizeHandle.bottomHandle 
+        const newHeight = resizeHandle.bottomHandle
           ? Math.max(scaleSettings.pixelsPerUnit, svgPoint.y - selectedRoom.y)
           : selectedRoom.height;
-        
+
         // Apply snapping to the new dimensions
-        const snappedWidth = resizeHandle.rightHandle 
+        const snappedWidth = resizeHandle.rightHandle
           ? snapToGridIfEnabled(newWidth, isShiftPressed)
           : selectedRoom.width;
-        const snappedHeight = resizeHandle.bottomHandle 
+        const snappedHeight = resizeHandle.bottomHandle
           ? snapToGridIfEnabled(newHeight, isShiftPressed)
           : selectedRoom.height;
-        
+
         setRooms(rooms.map(room =>
           room.id === selectedRoom.id
             ? { ...room, width: snappedWidth, height: snappedHeight }
@@ -911,7 +933,7 @@ const FloorPlanDrawer = ({
       setPanStart(null);
       return;
     }
-    
+
     if (mode === 'draw' && currentRect && currentRect.width > 20 && currentRect.height > 20) {
       const newRoom = {
         id: `room-${Date.now()}`,
@@ -935,22 +957,22 @@ const FloorPlanDrawer = ({
         if (currentRoom) {
           const moved = currentRoom.x !== dragStartRoomState.x || currentRoom.y !== dragStartRoomState.y;
           const resized = currentRoom.width !== dragStartRoomState.width || currentRoom.height !== dragStartRoomState.height;
-          
+
           if (moved || resized) {
-            const actionDesc = mode === 'move' ? 
-              `Moved room "${currentRoom.name}"` : 
+            const actionDesc = mode === 'move' ?
+              `Moved room "${currentRoom.name}"` :
               `Resized room "${currentRoom.name}"`;
             saveToHistory(rooms, actionDesc);
           }
         }
       }
-      
+
       setMode('select');
       setDragStart(null);
       setResizeHandle(null);
       setDragStartRoomState(null);
     }
-    
+
     setCurrentRect(null);
     setStartPoint(null);
   }, [mode, currentRect, rooms, isPanning]);
@@ -963,7 +985,7 @@ const FloorPlanDrawer = ({
 
   const getCursor = () => {
     if (isPanning) return 'grabbing';
-    
+
     switch (mode) {
       case 'draw': return 'crosshair';
       case 'move': return 'move';
@@ -974,8 +996,8 @@ const FloorPlanDrawer = ({
 
   const handleSaveRoom = () => {
     if (selectedRoom) {
-      const newRooms = rooms.map(room => 
-        room.id === selectedRoom.id 
+      const newRooms = rooms.map(room =>
+        room.id === selectedRoom.id
           ? { ...room, name: roomName }
           : room
       );
@@ -1032,18 +1054,23 @@ const FloorPlanDrawer = ({
 
     try {
       let savedPlan;
-      
+
       // If we have an existing floor plan, update it
       if (currentPlan?.id) {
         // Update existing floor plan
-        const response = await fetch(`http://localhost:3001/floor-plans/${currentPlan.id}`, {
+        const response = await fetch(`${config.BACKEND_URL}/api/floor-plans/${currentPlan.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(floorPlanData),
+          body: JSON.stringify({
+            name: currentPlan.name,
+            rooms_data: JSON.stringify(rooms),
+            view_box: viewBox,
+            svg_content: generateSVG().svg
+          }),
         });
-        
+
         if (response.ok) {
           savedPlan = await response.json();
           showNotification(`Floor plan "${floorPlanName}" updated successfully!`, 'success');
@@ -1053,14 +1080,19 @@ const FloorPlanDrawer = ({
         }
               } else {
           // Create new floor plan
-          const response = await fetch('http://localhost:3001/floor-plans', {
+          const response = await fetch(`${config.BACKEND_URL}/api/floor-plans`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(floorPlanData),
+          body: JSON.stringify({
+            name: floorPlanName,
+            rooms_data: JSON.stringify(rooms),
+            view_box: viewBox,
+            svg_content: generateSVG().svg
+          }),
         });
-        
+
         if (response.ok) {
           savedPlan = await response.json();
           showNotification(`Floor plan "${floorPlanName}" saved successfully!`, 'success');
@@ -1075,13 +1107,13 @@ const FloorPlanDrawer = ({
         ...savedPlan,
         rooms: savedPlan.rooms || floorPlanData.rooms
       };
-      
+
       // Update current plan reference
       setCurrentPlan(newPlan);
-      
+
     } catch (error) {
       console.error('Save error:', error);
-      
+
       // Show specific error message
       if (error.message.includes('already exists')) {
         showNotification(error.message, 'error');
@@ -1089,7 +1121,7 @@ const FloorPlanDrawer = ({
         setIsSaving(false);
         return;
       }
-      
+
       // Fallback to localStorage for other errors
       console.warn('Server save failed, using local storage');
       try {
@@ -1098,7 +1130,7 @@ const FloorPlanDrawer = ({
           id: currentPlan?.id || Date.now(),
           createdAt: new Date().toISOString()
         });
-        
+
         setCurrentPlan(localPlan);
         showNotification(`Floor plan "${floorPlanName}" saved locally!`, 'warning');
       } catch (localError) {
@@ -1110,7 +1142,7 @@ const FloorPlanDrawer = ({
     } finally {
       setIsSaving(false);
     }
-    
+
     setShowSaveDialog(false);
     setHasUnsavedChanges(false);
   };
@@ -1131,9 +1163,9 @@ const FloorPlanDrawer = ({
 
   const generateSVG = () => {
     const svgContent = rooms.map(room => `
-      <rect id="${room.id}" x="${room.x}" y="${room.y}" width="${room.width}" height="${room.height}" 
+      <rect id="${room.id}" x="${room.x}" y="${room.y}" width="${room.width}" height="${room.height}"
             fill="none" stroke="black" stroke-width="2"/>
-      <text x="${room.x + room.width/2}" y="${room.y + room.height/2}" 
+      <text x="${room.x + room.width/2}" y="${room.y + room.height/2}"
             text-anchor="middle" dominant-baseline="middle" fill="black">${room.name}</text>
     `).join('');
 
@@ -1144,17 +1176,17 @@ const FloorPlanDrawer = ({
   };
 
   // *************** ELECTRICAL COMPONENT MANAGEMENT ***************
-  
+
   // Load electrical data for current floor plan
   const loadElectricalData = async (floorPlanId) => {
     if (!floorPlanId) return;
-    
+
     setIsLoadingElectrical(true);
     try {
-      const response = await fetch(`http://localhost:3001/entities`);
+      const response = await fetch(`${config.BACKEND_URL}/api/entities`);
       if (response.ok) {
         const entities = await response.json();
-        
+
         // Filter entities for this floor plan and convert to component format
         const floorPlanComponents = entities
           .filter(entity => entity.floor_plan_id === floorPlanId)
@@ -1168,7 +1200,7 @@ const FloorPlanDrawer = ({
             device_type_id: entity.device_type_id,
             breaker_id: entity.breaker_id
           }));
-        
+
         setElectricalComponents(floorPlanComponents);
         if (floorPlanComponents.length > 0) {
           showNotification(`${floorPlanComponents.length} electrical components loaded`, 'success');
@@ -1190,7 +1222,7 @@ const FloorPlanDrawer = ({
     const typeMap = {
       1: 'light',
       2: 'outlet',
-      3: 'heater', 
+      3: 'heater',
       4: 'jacuzzi'
     };
     return typeMap[deviceTypeId] || 'light';
@@ -1200,7 +1232,7 @@ const FloorPlanDrawer = ({
   const getDeviceTypeId = (componentType) => {
     const typeMap = {
       'light': 1,
-      'outlet': 2, 
+      'outlet': 2,
       'heater': 3,
       'jacuzzi': 4,
       'switch': 1,
@@ -1212,6 +1244,45 @@ const FloorPlanDrawer = ({
   // Save electrical component to backend
   const saveElectricalComponent = async (component) => {
     try {
+      // ENHANCED FLOOR PLAN ID DETECTION
+      // Try multiple strategies to get the current floor plan ID
+      let activeFloorPlanId = null;
+      
+      // Strategy 1: Use currentPlan.id if available
+      if (currentPlan?.id) {
+        activeFloorPlanId = currentPlan.id;
+        console.log(`🎯 Using currentPlan.id: ${activeFloorPlanId}`);
+      }
+      
+      // Strategy 2: If currentPlan.id is null, try to get the most recent floor plan
+      if (!activeFloorPlanId) {
+        try {
+          const floorPlansResponse = await fetch(`${config.BACKEND_URL}/api/floor-plans`);
+          if (floorPlansResponse.ok) {
+            const floorPlans = await floorPlansResponse.json();
+            if (floorPlans && floorPlans.length > 0) {
+              // Get the most recently updated floor plan
+              const mostRecentPlan = floorPlans.sort((a, b) => 
+                new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+              )[0];
+              activeFloorPlanId = mostRecentPlan.id;
+              console.log(`🔍 Using most recent floor plan: ${activeFloorPlanId} (${mostRecentPlan.name})`);
+              
+              // Update currentPlan state for future saves
+              setCurrentPlan(mostRecentPlan);
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to fetch floor plans for ID detection:', error);
+        }
+      }
+      
+      // Strategy 3: Final fallback - warn user
+      if (!activeFloorPlanId) {
+        console.error('⚠️ No floor plan ID detected! Component may not persist correctly.');
+        showNotification('Warning: No active floor plan detected. Component may not save properly.', 'warning');
+      }
+
       // Map component data to match backend entities structure
       const entityData = {
         device_type_id: component.device_type_id || getDeviceTypeId(component.type),
@@ -1219,10 +1290,19 @@ const FloorPlanDrawer = ({
         y: component.y,
         breaker_id: component.breaker_id || null,
         room_id: component.room_id || null,
-        floor_plan_id: currentPlan?.id || null
+        floor_plan_id: activeFloorPlanId, // FIXED: Use detected active floor plan ID
+        label: component.label || component.type,
+        voltage: component.voltage || 120,
+        amperage: component.amperage || 15,
+        wattage: component.wattage || 0,
+        gfci: component.gfci || false,
+        circuit_id: component.circuit_id || null,
+        properties: component.properties || {}
       };
 
-      const response = await fetch('http://localhost:3001/entities', {
+      console.log(`💾 Saving component with floor_plan_id: ${activeFloorPlanId}`, entityData);
+
+      const response = await fetch(`${config.BACKEND_URL}/api/entities`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entityData)
@@ -1233,7 +1313,7 @@ const FloorPlanDrawer = ({
       }
 
       const savedEntity = await response.json();
-      
+
       // Return component in the format expected by frontend
       return {
         id: savedEntity.id,
@@ -1242,7 +1322,14 @@ const FloorPlanDrawer = ({
         y: component.y,
         label: component.label || component.type,
         room_id: component.room_id,
-        device_type_id: entityData.device_type_id
+        device_type_id: entityData.device_type_id,
+        voltage: entityData.voltage,
+        amperage: entityData.amperage,
+        wattage: entityData.wattage,
+        gfci: entityData.gfci,
+        circuit_id: entityData.circuit_id,
+        floor_plan_id: savedEntity.floor_plan_id, // Include floor_plan_id in return
+        properties: entityData.properties
       };
     } catch (error) {
       console.error('Error saving electrical component:', error);
@@ -1262,7 +1349,7 @@ const FloorPlanDrawer = ({
     if (!component) return;
 
     try {
-      await fetch(`http://localhost:3001/entities/${component.id}`, {
+      await fetch(`${config.BACKEND_URL}/api/entities/${component.id}`, {
         method: 'DELETE'
       });
     } catch (error) {
@@ -1299,10 +1386,10 @@ const FloorPlanDrawer = ({
   // Load electrical system data (panels only - circuits removed for simplicity)
   const loadElectricalSystemData = async (floorPlanId) => {
     if (!floorPlanId) return;
-    
+
     try {
       // Load panels only
-      const panelsResponse = await fetch(`http://localhost:3001/electrical-panels?floor_plan_id=${floorPlanId}`);
+      const panelsResponse = await fetch(`${config.BACKEND_URL}/api/electrical/panels?floor_plan_id=${floorPlanId}`);
       if (panelsResponse.ok) {
         const panelsData = await panelsResponse.json();
         setElectricalPanels(panelsData);
@@ -1315,7 +1402,7 @@ const FloorPlanDrawer = ({
   // Create default panel if none exists
   const createDefaultPanel = async () => {
     if (!currentPlan?.id) return;
-    
+
     try {
       const defaultPanel = {
         floor_plan_id: currentPlan.id,
@@ -1326,13 +1413,13 @@ const FloorPlanDrawer = ({
         main_breaker_amps: 200,
         total_positions: 30
       };
-      
-      const response = await fetch('http://localhost:3001/electrical-panels', {
+
+      const response = await fetch(`${config.BACKEND_URL}/api/electrical/panels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(defaultPanel)
       });
-      
+
       if (response.ok) {
         const savedPanel = await response.json();
         const newPanel = { ...defaultPanel, id: savedPanel.id };
@@ -1356,10 +1443,10 @@ const FloorPlanDrawer = ({
       <Box sx={{ flexGrow: 1, position: 'relative', overflow: 'hidden' }}>
         {/* Drawing Tools Toolbar - Floating on Canvas */}
         {!electricalModeOnly && (
-          <Box sx={{ 
-            position: 'absolute', 
-            top: 16, 
-            left: 16, 
+          <Box sx={{
+            position: 'absolute',
+            top: 16,
+            left: 16,
             zIndex: 1000,
             display: 'flex',
             gap: 1,
@@ -1394,7 +1481,7 @@ const FloorPlanDrawer = ({
               onClick={() => setSnapToGrid(!snapToGrid)}
               size="small"
               title={isShiftPressed ? "Snap disabled (Shift held)" : `Snap to rooms & grid: ${snapToGrid ? 'ON' : 'OFF'}`}
-              sx={{ 
+              sx={{
                 opacity: isShiftPressed ? 0.5 : 1,
                 transition: 'opacity 0.2s'
               }}
@@ -1426,10 +1513,10 @@ const FloorPlanDrawer = ({
 
         {/* Electrical Tools Toolbar - Floating on Canvas */}
         {electricalModeOnly && (
-          <Box sx={{ 
-            position: 'absolute', 
-            top: 16, 
-            left: 16, 
+          <Box sx={{
+            position: 'absolute',
+            top: 16,
+            left: 16,
             zIndex: 1000,
             display: 'flex',
             flexDirection: 'column',
@@ -1454,7 +1541,7 @@ const FloorPlanDrawer = ({
                 ) : (
                   <>
                     <Typography variant="caption" color="textSecondary" gutterBottom>
-                      {selectedElectricalTool 
+                      {selectedElectricalTool
                         ? `Click to place ${selectedElectricalTool.name}`
                         : 'Select an electrical component:'
                       }
@@ -1463,7 +1550,7 @@ const FloorPlanDrawer = ({
                       onSelect={setSelectedElectricalTool}
                       selected={selectedElectricalTool}
                     />
-                    
+
                     {electricalPanels.length === 0 && (
                       <Button
                         variant="outlined"
@@ -1482,10 +1569,10 @@ const FloorPlanDrawer = ({
 
         {/* Zoom Controls */}
         {/* Save & Help Controls - Top Right */}
-        <Box sx={{ 
-          position: 'absolute', 
-          top: 16, 
-          right: 16, 
+        <Box sx={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
           zIndex: 1000,
           display: 'flex',
           gap: 1,
@@ -1518,10 +1605,10 @@ const FloorPlanDrawer = ({
 
         {/* Status/Progress Indicator - Bottom Left */}
         {!electricalModeOnly && rooms.length > 0 && (
-          <Box sx={{ 
-            position: 'absolute', 
-            bottom: 16, 
-            left: 16, 
+          <Box sx={{
+            position: 'absolute',
+            bottom: 16,
+            left: 16,
             zIndex: 1000,
             display: 'flex',
             alignItems: 'center',
@@ -1545,7 +1632,7 @@ const FloorPlanDrawer = ({
                 color="success"
                 onClick={onProceedToPanels}
                 size="medium"
-                sx={{ 
+                sx={{
                   fontWeight: 600,
                   textTransform: 'none',
                   boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)'
@@ -1558,10 +1645,10 @@ const FloorPlanDrawer = ({
         )}
 
         {/* Zoom Controls - Bottom Right (above scale) */}
-        <Box sx={{ 
-          position: 'absolute', 
-          bottom: 120, 
-          right: 16, 
+        <Box sx={{
+          position: 'absolute',
+          bottom: 120,
+          right: 16,
           zIndex: 1000,
           backgroundColor: darkMode ? 'rgba(42, 42, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)',
           backdropFilter: 'blur(8px)',
@@ -1621,10 +1708,10 @@ const FloorPlanDrawer = ({
         </Box>
 
         {/* Scale Bar - Bottom Right */}
-        <Box sx={{ 
-          position: 'absolute', 
-          bottom: 16, 
-          right: 16, 
+        <Box sx={{
+          position: 'absolute',
+          bottom: 16,
+          right: 16,
           zIndex: 1000,
           backgroundColor: darkMode ? 'rgba(42, 42, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)',
           backdropFilter: 'blur(8px)',
@@ -1641,9 +1728,9 @@ const FloorPlanDrawer = ({
             Scale
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ 
-              width: `${scaleSettings.pixelsPerUnit * 5}px`, 
-              height: '3px', 
+            <Box sx={{
+              width: `${scaleSettings.pixelsPerUnit * 5}px`,
+              height: '3px',
               backgroundColor: darkMode ? '#ccc' : '#333',
               position: 'relative'
             }}>
@@ -1665,10 +1752,10 @@ const FloorPlanDrawer = ({
         </Box>
 
         {/* Pan Instructions */}
-        <Box sx={{ 
-          position: 'absolute', 
-          bottom: 16, 
-          right: 16, 
+        <Box sx={{
+          position: 'absolute',
+          bottom: 16,
+          right: 16,
           zIndex: 1000,
           backgroundColor: 'rgba(0,0,0,0.7)',
           color: 'white',
@@ -1679,13 +1766,13 @@ const FloorPlanDrawer = ({
         }}>
                      <span role="img" aria-label="mouse">🖱️</span> Hold Space + Drag to Pan
         </Box>
-        
+
         <svg
           ref={svgRef}
           width="100%"
           height="100%"
           viewBox={viewBox}
-          style={{ 
+          style={{
             cursor: isPanning ? 'grabbing' : getCursor(),
             background: darkMode ? '#2c2c2c' : '#f5f5f5'
           }}
@@ -1706,7 +1793,7 @@ const FloorPlanDrawer = ({
             const isSelected = selectedRoom?.id === room.id;
             const adjacentRoomsWidth = findAdjacentRooms(room, 'width');
             const adjacentRoomsHeight = findAdjacentRooms(room, 'height');
-            
+
             return (
               <g key={room.id}>
                 <rect
@@ -1752,7 +1839,7 @@ const FloorPlanDrawer = ({
                       {/* End markers */}
                       <line x1={room.x} y1={room.y - 20} x2={room.x} y2={room.y - 10} stroke={darkMode ? "#ccc" : "#666"} strokeWidth="1" />
                       <line x1={room.x + room.width} y1={room.y - 20} x2={room.x + room.width} y2={room.y - 10} stroke={darkMode ? "#ccc" : "#666"} strokeWidth="1" />
-                      
+
                       {/* Clickable dimension text */}
                       <text
                         x={room.x + room.width / 2}
@@ -1787,7 +1874,7 @@ const FloorPlanDrawer = ({
                       {/* End markers */}
                       <line x1={room.x - 20} y1={room.y} x2={room.x - 10} y2={room.y} stroke={darkMode ? "#ccc" : "#666"} strokeWidth="1" />
                       <line x1={room.x - 20} y1={room.y + room.height} x2={room.x - 10} y2={room.y + room.height} stroke={darkMode ? "#ccc" : "#666"} strokeWidth="1" />
-                      
+
                       {/* Clickable dimension text */}
                       <text
                         x={room.x - 18}
@@ -1844,7 +1931,7 @@ const FloorPlanDrawer = ({
                     ))}
                   </>
                 )}
-                
+
                 {/* Resize handles for selected room */}
                 {selectedRoom?.id === room.id && mode === 'select' && (
                   <>
@@ -2063,9 +2150,9 @@ const FloorPlanDrawer = ({
           <Button onClick={() => setDeleteRoomDialog({ open: false, room: null })}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleConfirmDeleteRoom} 
-            color="error" 
+          <Button
+            onClick={handleConfirmDeleteRoom}
+            color="error"
             variant="contained"
             autoFocus
           >
@@ -2087,21 +2174,21 @@ const FloorPlanDrawer = ({
             • <strong>Snap:</strong> Toggle grid and room edge snapping (Hold Shift to temporarily disable)<br/>
             • <strong>Undo/Redo:</strong> Navigate through your editing history
           </Typography>
-          
+
           <Typography variant="h6" gutterBottom>Navigation</Typography>
           <Typography variant="body2" paragraph>
             • <strong>Space + Drag:</strong> Pan around the canvas<br/>
             • <strong>Middle Mouse + Drag:</strong> Pan around the canvas<br/>
             • <strong>Mouse Wheel:</strong> Zoom in/out (if zoom controls enabled)
           </Typography>
-          
+
           <Typography variant="h6" gutterBottom>Keyboard Shortcuts</Typography>
           <Typography variant="body2" paragraph>
             • <strong>Delete/Backspace:</strong> Delete selected room<br/>
             • <strong>Ctrl/Cmd + D:</strong> Duplicate selected room<br/>
             • <strong>Shift:</strong> Temporarily disable snapping while held
           </Typography>
-          
+
           <Typography variant="h6" gutterBottom>Dimensions</Typography>
           <Typography variant="body2" paragraph>
             • <strong>Double-click dimensions:</strong> Edit room measurements<br/>
@@ -2201,10 +2288,10 @@ const FloorPlanDrawer = ({
             helperText={`Current: ${formatDimension(editingDimension?.value || 0)}. You can type in any unit (ft, in, m, cm) - it will be converted automatically.`}
           />
           {constraintPreview && (
-            <Box sx={{ 
-              mt: 2, 
-              p: 2, 
-              backgroundColor: darkMode ? 'rgba(255, 152, 0, 0.1)' : '#fff3e0', 
+            <Box sx={{
+              mt: 2,
+              p: 2,
+              backgroundColor: darkMode ? 'rgba(255, 152, 0, 0.1)' : '#fff3e0',
               borderRadius: 1,
               border: darkMode ? '1px solid rgba(255, 152, 0, 0.3)' : 'none'
             }}>
