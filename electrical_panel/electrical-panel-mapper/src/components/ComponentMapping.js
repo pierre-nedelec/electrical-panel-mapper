@@ -394,11 +394,17 @@ const ComponentMapping = ({
       };
       setElectricalComponents(prev => [...prev, tempComponent]);
 
+      // Ensure floor_plan_id is set from project
+      const componentWithFloorPlan = {
+        ...componentData,
+        floor_plan_id: project.id
+      };
+
       // Save to backend
       const response = await fetch(`${config.BACKEND_URL}/api/electrical/components`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(componentData)
+        body: JSON.stringify(componentWithFloorPlan)
       });
 
       if (response.ok) {
@@ -690,10 +696,16 @@ const ComponentMapping = ({
   // Handle component property saves
   const handleComponentSave = async (updatedComponent) => {
     try {
+      // Ensure floor_plan_id is preserved from project or existing component
+      const componentToSave = {
+        ...updatedComponent,
+        floor_plan_id: updatedComponent.floor_plan_id || project.id
+      };
+
       const response = await fetch(`${config.BACKEND_URL}/api/electrical/components/${updatedComponent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedComponent)
+        body: JSON.stringify(componentToSave)
       });
 
       if (response.ok) {

@@ -506,7 +506,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
           </Typography>
           
           {deleteConfirmDialog.project?.status && (
-            <Box sx={{ bgcolor: 'grey.100', p: 2, borderRadius: 1, mb: 2 }}>
+            <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 1, mb: 2 }}>
               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
                 This will delete ALL associated data:
               </Typography>

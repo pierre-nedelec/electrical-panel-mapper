@@ -513,7 +513,7 @@ const PanelExport = ({
               ))}
 
               {/* Footer with Notes */}
-              <Box sx={{ mt: 4, p: 2, backgroundColor: 'grey.50', borderRadius: 1 }}>
+              <Box sx={{ mt: 4, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                 <Typography variant="h6" gutterBottom>Notes for Electrician</Typography>
                 <Typography variant="body2" paragraph>
                   • This schedule shows current electrical component assignments and load calculations
@@ -588,7 +588,7 @@ const PanelExport = ({
           </ul>
 
           {exportData && (
-            <Box sx={{ mt: 2, p: 2, backgroundColor: 'grey.50', borderRadius: 1 }}>
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
               <Typography variant="body2" gutterBottom>
                 <strong>Current Project:</strong>
               </Typography>

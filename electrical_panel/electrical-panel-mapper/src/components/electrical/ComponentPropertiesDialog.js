@@ -15,7 +15,9 @@ import {
   Chip,
   FormControlLabel,
   Checkbox,
-  LinearProgress
+  LinearProgress,
+  useTheme,
+  alpha
 } from '@mui/material';
 import { 
   calculateCircuitCapacity, 
@@ -37,6 +39,7 @@ const ComponentPropertiesDialog = ({
   components = [], // All electrical components to calculate circuit loads
   getComponentRoom // Function to determine room from position
 }) => {
+  const theme = useTheme();
   const [formData, setFormData] = useState({
     label: '',
     type: 'outlet',
@@ -144,6 +147,8 @@ const ComponentPropertiesDialog = ({
       gfci: formData.gfci,
       room_id: formData.room_id,
       circuit_id: formData.circuit_id,
+      // Ensure floor_plan_id is preserved
+      floor_plan_id: component?.floor_plan_id,
       // Store only appliance-specific properties that don't have dedicated columns
       properties: {
         ...component?.properties,
@@ -385,7 +390,7 @@ const ComponentPropertiesDialog = ({
             
             {/* Circuit Load Indicator with Capacity Check */}
             {formData.circuit_id && (
-              <Box sx={{ mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Box sx={{ mt: 1, p: 1, bgcolor: 'background.default', borderRadius: 1 }}>
                 {(() => {
                   const selectedCircuit = circuits.find(c => c.id === formData.circuit_id);
                   if (!selectedCircuit) return null;
@@ -442,7 +447,7 @@ const ComponentPropertiesDialog = ({
                       </Box>
                       
                       {/* Custom stacked progress bar showing existing vs new component load */}
-                      <Box sx={{ position: 'relative', height: 8, borderRadius: 1, bgcolor: 'grey.200', overflow: 'hidden', mb: 1 }}>
+                      <Box sx={{ position: 'relative', height: 8, borderRadius: 1, bgcolor: 'divider', overflow: 'hidden', mb: 1 }}>
                         {/* Existing components load (solid) */}
                         <Box
                           sx={{
@@ -496,9 +501,9 @@ const ComponentPropertiesDialog = ({
                         sx={{ 
                           mt: 1, 
                           p: 1, 
-                          bgcolor: capacityCheck.severity === 'error' ? '#ffebee' : 
-                                   capacityCheck.severity === 'warning' ? '#fff3e0' : 
-                                   capacityCheck.severity === 'info' ? '#e3f2fd' : '#e8f5e9',
+                          bgcolor: capacityCheck.severity === 'error' ? alpha(theme.palette.error.main, 0.1) : 
+                                   capacityCheck.severity === 'warning' ? alpha(theme.palette.warning.main, 0.1) : 
+                                   capacityCheck.severity === 'info' ? alpha(theme.palette.info.main, 0.1) : alpha(theme.palette.success.main, 0.1),
                           borderRadius: 1,
                           borderLeft: `3px solid ${statusColor}`
                         }}
@@ -524,7 +529,7 @@ const ComponentPropertiesDialog = ({
 
           {/* Electrical Info */}
           {formData.wattage > 0 && (
-            <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
               <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
                 <strong>Electrical Requirements:</strong>
               </Typography>
@@ -614,7 +619,7 @@ const ComponentPropertiesDialog = ({
 
           {/* Status - Compact */}
           {component && (
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1, bgcolor: 'background.default', borderRadius: 1 }}>
               <Typography variant="caption" color="textSecondary">
                 Position: ({Math.round(component.x)}, {Math.round(component.y)})
               </Typography>
