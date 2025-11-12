@@ -6,9 +6,10 @@ import PanelConfiguration from './PanelConfiguration';
 import ComponentMapping from './ComponentMapping';
 import PanelExport from './PanelExport';
 import MenuBar from './MenuBar';
+import Settings from './Settings';
 
 const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
-  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, floorplan, panels, mapping, export
+  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, floorplan, panels, mapping, export, settings
   const [currentProject, setCurrentProject] = useState(null);
 
   const handleStartProject = (project) => {
@@ -67,6 +68,14 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
 
   const handleBackToDashboard = () => {
     setCurrentProject(null);
+    setCurrentView('dashboard');
+  };
+
+  const handleSettingsClick = () => {
+    setCurrentView('settings');
+  };
+
+  const handleSettingsClose = () => {
     setCurrentView('dashboard');
   };
 
@@ -181,7 +190,7 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
     );
   };
 
-  const showMenuBar = currentView !== 'dashboard';
+  const showMenuBar = currentView !== 'dashboard' && currentView !== 'settings';
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -193,6 +202,7 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
           onBackToHome={handleBackToDashboard}
           showBackButton={currentView !== 'dashboard'}
           stepper={getStepperComponent()}
+          onSettingsClick={handleSettingsClick}
         />
       )}
       
@@ -203,6 +213,14 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
             onResumeProject={handleResumeProject}
             onEditProject={handleEditProject}
             darkMode={darkMode}
+            onSettingsClick={handleSettingsClick}
+          />
+        )}
+
+        {currentView === 'settings' && (
+          <Settings
+            darkMode={darkMode}
+            onClose={handleSettingsClose}
           />
         )}
         
