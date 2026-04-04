@@ -31,6 +31,8 @@ import PanelVisualization from './electrical/PanelVisualization';
 // CircuitManager removed for UI simplicity
 import { useComponentPlacement, ComponentPreview } from './electrical/ComponentPlacement';
 import config from '../config';
+import deviceTypesService from '../services/deviceTypesService';
+import { getDeviceTypeId } from '../utils/deviceTypeMapping';
 
 const FloorPlanDrawer = ({
   onSaveFloorPlan,
@@ -1219,31 +1221,16 @@ const FloorPlanDrawer = ({
 
   // Helper function to convert device_type_id back to component type
   const getComponentTypeFromDeviceTypeId = (deviceTypeId) => {
-    const typeMap = {
-      1: 'light',
-      2: 'outlet',
-      3: 'heater',
-      4: 'jacuzzi'
-    };
-    return typeMap[deviceTypeId] || 'light';
-  };
-
-  // Helper function to get device type ID from component type
-  const getDeviceTypeId = (componentType) => {
-    const typeMap = {
-      'light': 1,
-      'outlet': 2,
-      'heater': 3,
-      'jacuzzi': 4,
-      'switch': 1,
-      'panel': 1
-    };
-    return typeMap[componentType] || 1;
+    // Use deviceTypesService for dynamic resolution instead of hardcoded mapping
+    return deviceTypesService.getComponentType(deviceTypeId) || 'outlet';
   };
 
   // Save electrical component to backend
   const saveElectricalComponent = async (component) => {
     try {
+      // Ensure device types are loaded
+      await deviceTypesService.fetchDeviceTypes();
+      
       // ENHANCED FLOOR PLAN ID DETECTION
       // Try multiple strategies to get the current floor plan ID
       let activeFloorPlanId = null;
@@ -1283,9 +1270,15 @@ const FloorPlanDrawer = ({
         showNotification('Warning: No active floor plan detected. Component may not save properly.', 'warning');
       }
 
+      // Always resolve device_type_id from component.type to ensure correctness
+      // The component.type is the source of truth (e.g., 'outlet', 'light', 'appliance')
+      // This ensures we get the correct device_type_id from the database, not hardcoded values
+      const finalDeviceTypeId = getDeviceTypeId(component.type, component.properties?.appliance_type);
+      console.log(`🔧 Resolved device_type_id for ${component.type}${component.properties?.appliance_type ? ` (${component.properties.appliance_type})` : ''}: ${finalDeviceTypeId}`);
+
       // Map component data to match backend entities structure
       const entityData = {
-        device_type_id: component.device_type_id || getDeviceTypeId(component.type),
+        device_type_id: finalDeviceTypeId,
         x: component.x,
         y: component.y,
         breaker_id: component.breaker_id || null,

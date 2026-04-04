@@ -6,9 +6,10 @@ import PanelConfiguration from './PanelConfiguration';
 import ComponentMapping from './ComponentMapping';
 import PanelExport from './PanelExport';
 import MenuBar from './MenuBar';
+import Settings from './Settings';
 
 const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
-  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, floorplan, panels, mapping, export
+  const [currentView, setCurrentView] = useState('dashboard'); // dashboard, floorplan, panels, mapping, export, settings
   const [currentProject, setCurrentProject] = useState(null);
 
   const handleStartProject = (project) => {
@@ -70,6 +71,14 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
     setCurrentView('dashboard');
   };
 
+  const handleSettingsClick = () => {
+    setCurrentView('settings');
+  };
+
+  const handleSettingsClose = () => {
+    setCurrentView('dashboard');
+  };
+
   const getPageTitle = () => {
     if (!currentProject) return 'Electrical Panel Mapper';
     
@@ -90,31 +99,20 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
   const handleStepClick = (step) => {
     if (!currentProject) return;
     
-    // Only allow navigation to completed or current steps
-    const stepMap = {
-      'floorplan': 0,
-      'panels': 1,
-      'mapping': 2,
-      'export': 3
-    };
-    
-    const currentStepIndex = stepMap[currentView] || 0;
-    
-    if (step <= currentStepIndex) {
-      switch (step) {
-        case 0:
-          setCurrentView('floorplan');
-          break;
-        case 1:
-          setCurrentView('panels');
-          break;
-        case 2:
-          setCurrentView('mapping');
-          break;
-        case 3:
-          setCurrentView('export');
-          break;
-      }
+    // Allow navigation to any step
+    switch (step) {
+      case 0:
+        setCurrentView('floorplan');
+        break;
+      case 1:
+        setCurrentView('panels');
+        break;
+      case 2:
+        setCurrentView('mapping');
+        break;
+      case 3:
+        setCurrentView('export');
+        break;
     }
   };
 
@@ -136,15 +134,24 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
         sx={{ 
           minWidth: 300,
           '& .MuiStepLabel-root': {
-            color: 'inherit'
+            color: 'inherit',
+            cursor: 'pointer',
+            '&:hover': {
+              opacity: 0.8
+            }
           },
           '& .MuiStepLabel-label': {
             color: darkMode ? '#ffffff' : '#000000',
-            fontWeight: 500
+            fontWeight: 500,
+            cursor: 'pointer',
+            '&:hover': {
+              textDecoration: 'underline'
+            }
           },
           '& .MuiStepIcon-root': {
             color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
             fontSize: '1.5rem',
+            cursor: 'pointer',
             '&.Mui-active': {
               color: '#000000'
             },
@@ -160,46 +167,22 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
         }}
       >
         <Step completed={activeStep > 0}>
-          <StepLabel 
-            onClick={activeStep >= 0 ? () => handleStepClick(0) : undefined}
-            sx={{ 
-              cursor: activeStep >= 0 ? 'pointer' : 'default',
-              opacity: activeStep >= 0 ? 1 : 0.6 
-            }}
-          >
+          <StepLabel onClick={() => handleStepClick(0)}>
             Floor Plan
           </StepLabel>
         </Step>
         <Step completed={activeStep > 1}>
-          <StepLabel 
-            onClick={activeStep >= 1 ? () => handleStepClick(1) : undefined}
-            sx={{ 
-              cursor: activeStep >= 1 ? 'pointer' : 'default',
-              opacity: activeStep >= 1 ? 1 : 0.6 
-            }}
-          >
+          <StepLabel onClick={() => handleStepClick(1)}>
             Panel Setup
           </StepLabel>
         </Step>
         <Step completed={activeStep > 2}>
-          <StepLabel 
-            onClick={activeStep >= 2 ? () => handleStepClick(2) : undefined}
-            sx={{ 
-              cursor: activeStep >= 2 ? 'pointer' : 'default',
-              opacity: activeStep >= 2 ? 1 : 0.6 
-            }}
-          >
+          <StepLabel onClick={() => handleStepClick(2)}>
             Component Mapping
           </StepLabel>
         </Step>
         <Step active={activeStep === 3}>
-          <StepLabel 
-            onClick={activeStep >= 3 ? () => handleStepClick(3) : undefined}
-            sx={{ 
-              cursor: activeStep >= 3 ? 'pointer' : 'default',
-              opacity: activeStep >= 3 ? 1 : 0.6 
-            }}
-          >
+          <StepLabel onClick={() => handleStepClick(3)}>
             Panel Export
           </StepLabel>
         </Step>
@@ -207,7 +190,7 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
     );
   };
 
-  const showMenuBar = currentView !== 'dashboard';
+  const showMenuBar = currentView !== 'dashboard' && currentView !== 'settings';
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -219,6 +202,7 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
           onBackToHome={handleBackToDashboard}
           showBackButton={currentView !== 'dashboard'}
           stepper={getStepperComponent()}
+          onSettingsClick={handleSettingsClick}
         />
       )}
       
@@ -229,6 +213,14 @@ const ElectricalMapperApp = ({ darkMode, toggleDarkMode }) => {
             onResumeProject={handleResumeProject}
             onEditProject={handleEditProject}
             darkMode={darkMode}
+            onSettingsClick={handleSettingsClick}
+          />
+        )}
+
+        {currentView === 'settings' && (
+          <Settings
+            darkMode={darkMode}
+            onClose={handleSettingsClose}
           />
         )}
         

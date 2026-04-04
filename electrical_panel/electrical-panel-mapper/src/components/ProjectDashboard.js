@@ -31,11 +31,12 @@ import {
   ElectricalServices as ElectricalIcon,
   Map as MapIcon,
   CheckCircle as CheckIcon,
-  PlayArrow as PlayIcon
+  PlayArrow as PlayIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import config from '../config';
 
-const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) => {
+const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject, onSettingsClick }) => {
   const [savedProjects, setSavedProjects] = useState([]);
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -310,7 +311,19 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
+      <Box sx={{ mb: 4, textAlign: 'center', position: 'relative' }}>
+        {onSettingsClick && (
+          <Box sx={{ position: 'absolute', top: 0, right: 0 }}>
+            <Button
+              startIcon={<SettingsIcon />}
+              onClick={onSettingsClick}
+              variant="outlined"
+              size="small"
+            >
+              Settings
+            </Button>
+          </Box>
+        )}
         <Typography variant="h3" component="h1" gutterBottom>
           Electrical Panel Mapper
         </Typography>
@@ -506,7 +519,7 @@ const ProjectDashboard = ({ onStartProject, onResumeProject, onEditProject }) =>
           </Typography>
           
           {deleteConfirmDialog.project?.status && (
-            <Box sx={{ bgcolor: 'grey.100', p: 2, borderRadius: 1, mb: 2 }}>
+            <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 1, mb: 2 }}>
               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
                 This will delete ALL associated data:
               </Typography>

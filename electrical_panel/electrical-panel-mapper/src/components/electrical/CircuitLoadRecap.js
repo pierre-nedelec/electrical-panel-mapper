@@ -17,7 +17,9 @@ import {
   Button,
   Collapse,
   IconButton,
-  Tooltip
+  Tooltip,
+  useTheme,
+  alpha
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -33,6 +35,7 @@ import {
 import { calculateCircuitLoad, calculateComponentLoad, formatLoad } from '../../utils/loadCalculations';
 
 const CircuitLoadRecap = ({ circuits = [], components = [], onCircuitMergeClick }) => {
+  const theme = useTheme();
   const [expandedCircuit, setExpandedCircuit] = useState(null);
   const [sortBy, setSortBy] = useState('load'); // 'load', 'utilization', 'position'
 
@@ -191,7 +194,7 @@ const CircuitLoadRecap = ({ circuits = [], components = [], onCircuitMergeClick 
 
       {/* Merge Suggestion */}
       {lightlyLoadedCircuits.length >= 2 && (
-        <Card sx={{ mb: 2, backgroundColor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
+        <Card sx={{ mb: 2, bgcolor: alpha(theme.palette.info.main, 0.1), borderLeft: '4px solid', borderColor: 'info.main' }}>
           <CardContent sx={{ py: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <MergeIcon color="info" />
@@ -335,7 +338,7 @@ const CircuitLoadRecap = ({ circuits = [], components = [], onCircuitMergeClick 
                   
                   {/* Load Breakdown */}
                   {circuit.totalLoad > 0 && (
-                    <Box sx={{ mt: 2, p: 1, backgroundColor: 'grey.50', borderRadius: 1 }}>
+                    <Box sx={{ mt: 2, p: 1, bgcolor: 'background.default', borderRadius: 1 }}>
                       <Typography variant="caption" display="block" gutterBottom>
                         Load Breakdown:
                       </Typography>

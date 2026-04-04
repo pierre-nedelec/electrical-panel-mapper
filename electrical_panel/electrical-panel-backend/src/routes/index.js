@@ -139,10 +139,8 @@ router.get('/backup/list', async (req, res) => {
 
 // ================= LEGACY ROUTES (for backward compatibility) =================
 
-// Legacy device-types route (redirect to electrical/symbols)
-router.get('/device-types', (req, res) => {
-  res.redirect('/api/electrical/symbols');
-});
+// Note: Legacy device-types redirect removed - use /api/device-types directly
+// The proper endpoint provides better functionality (filtering, custom types, etc.)
 
 // Legacy breakers routes (deprecated - functionality moved to electrical/circuits)
 router.get('/breakers', (req, res) => {

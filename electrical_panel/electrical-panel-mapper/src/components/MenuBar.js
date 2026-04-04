@@ -4,6 +4,7 @@ import { AppBar, Toolbar, Typography, IconButton, Button, Box } from '@mui/mater
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 const MenuBar = ({ 
   darkMode, 
@@ -12,7 +13,8 @@ const MenuBar = ({
   children, 
   onBackToHome,
   showBackButton = false,
-  stepper = null 
+  stepper = null,
+  onSettingsClick = null
 }) => {
   return (
     <AppBar position="static">
@@ -40,6 +42,16 @@ const MenuBar = ({
         )}
         
         {children}
+        {onSettingsClick && (
+          <IconButton 
+            color="inherit" 
+            onClick={onSettingsClick}
+            aria-label="settings"
+            sx={{ mr: 1 }}
+          >
+            <SettingsIcon />
+          </IconButton>
+        )}
         <IconButton color="inherit" onClick={toggleDarkMode}>
           {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
         </IconButton>

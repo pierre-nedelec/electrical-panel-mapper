@@ -47,6 +47,7 @@ import CalculateIcon from '@mui/icons-material/Calculate';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import config from '../config';
 import deviceTypesService from '../services/deviceTypesService';
+import { getDeviceTypeId } from '../utils/deviceTypeMapping';
 import useSvgTheming from '../hooks/useSvgTheming';
 
 // Import electrical components
@@ -125,13 +126,14 @@ const ComponentMapping = ({
   } = useComponentPlacement(svgRef, true, 20, rooms);
 
   // Quick access tools for toolbar (component tools only)
+  // Note: device_type_id is resolved dynamically, not hardcoded
   const quickTools = [
     // Component tools only
-    { id: 'outlet', name: 'Outlet', icon: OutletIcon, shortcut: 'O', type: 'component', device_type_id: 2 },
-    { id: 'light', name: 'Light', icon: LightbulbIcon, shortcut: 'L', type: 'component', device_type_id: 1 },
-    { id: 'switch', name: 'Switch', icon: ToggleOnIcon, shortcut: 'S', type: 'component', device_type_id: 1 },
-    { id: 'appliance', name: 'Appliance', icon: LocalFireDepartmentIcon, shortcut: 'A', type: 'component', device_type_id: 4 },
-    { id: 'panel', name: 'Panel', icon: ElectricalServicesIcon, shortcut: 'P', type: 'component', device_type_id: 1 }
+    { id: 'outlet', name: 'Outlet', icon: OutletIcon, shortcut: 'O', type: 'component' },
+    { id: 'light', name: 'Light', icon: LightbulbIcon, shortcut: 'L', type: 'component' },
+    { id: 'switch', name: 'Switch', icon: ToggleOnIcon, shortcut: 'S', type: 'component' },
+    { id: 'appliance', name: 'Appliance', icon: LocalFireDepartmentIcon, shortcut: 'A', type: 'component' },
+    { id: 'panel', name: 'Panel', icon: ElectricalServicesIcon, shortcut: 'P', type: 'component' }
   ];
 
   // Canvas controls (zoom and history only - pan is now default behavior)
@@ -387,6 +389,9 @@ const ComponentMapping = ({
   // Handle electrical component placement
   const handleElectricalComponentPlaced = async (componentData) => {
     try {
+      // Ensure device types are loaded
+      await deviceTypesService.fetchDeviceTypes();
+      
       // Add to local state immediately
       const tempComponent = {
         ...componentData,
@@ -394,11 +399,23 @@ const ComponentMapping = ({
       };
       setElectricalComponents(prev => [...prev, tempComponent]);
 
+      // Always resolve device_type_id from component.type to ensure correctness
+      // The component.type is the source of truth (e.g., 'outlet', 'light', 'appliance')
+      const resolvedDeviceTypeId = getDeviceTypeId(componentData.type, componentData.properties?.appliance_type);
+      console.log(`🔧 ComponentMapping: Resolved device_type_id for ${componentData.type}${componentData.properties?.appliance_type ? ` (${componentData.properties.appliance_type})` : ''}: ${resolvedDeviceTypeId}`);
+
+      // Ensure floor_plan_id is set from project and device_type_id is resolved correctly
+      const componentWithFloorPlan = {
+        ...componentData,
+        device_type_id: resolvedDeviceTypeId,
+        floor_plan_id: project.id
+      };
+
       // Save to backend
       const response = await fetch(`${config.BACKEND_URL}/api/electrical/components`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(componentData)
+        body: JSON.stringify(componentWithFloorPlan)
       });
 
       if (response.ok) {
@@ -690,10 +707,16 @@ const ComponentMapping = ({
   // Handle component property saves
   const handleComponentSave = async (updatedComponent) => {
     try {
+      // Ensure floor_plan_id is preserved from project or existing component
+      const componentToSave = {
+        ...updatedComponent,
+        floor_plan_id: updatedComponent.floor_plan_id || project.id
+      };
+
       const response = await fetch(`${config.BACKEND_URL}/api/electrical/components/${updatedComponent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedComponent)
+        body: JSON.stringify(componentToSave)
       });
 
       if (response.ok) {

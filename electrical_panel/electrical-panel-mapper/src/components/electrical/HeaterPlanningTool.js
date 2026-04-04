@@ -24,7 +24,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  useTheme,
+  alpha
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -47,6 +49,7 @@ const HeaterPlanningTool = ({
   circuits = [], 
   components = []
 }) => {
+  const theme = useTheme();
   const [selectedRoom, setSelectedRoom] = useState('');
   const [selectedHeater, setSelectedHeater] = useState('600-120'); // Default to HC-600 120V
   const [heaterCount, setHeaterCount] = useState(1);
@@ -145,7 +148,7 @@ const HeaterPlanningTool = ({
 
           {/* Panel Health Details */}
           {showPanelHealth && (
-            <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>Critical Issues:</Typography>
               {panelHealth.recommendations.map((rec, idx) => (
                 <Alert key={idx} severity={rec.priority === 'high' ? 'error' : 'warning'} sx={{ mb: 1 }}>
@@ -279,8 +282,8 @@ const HeaterPlanningTool = ({
                 {roomAnalysis.canAddAllHeaters && 
                  roomAnalysis.recommendation.distribution && 
                  roomAnalysis.recommendation.distribution.length > 0 && (
-                  <Box sx={{ mt: 2, p: 2, bgcolor: 'success.lighter', borderRadius: 1 }}>
-                    <Typography variant="subtitle2" gutterBottom color="success.dark">
+                  <Box sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 1 }}>
+                    <Typography variant="subtitle2" gutterBottom color="success.main">
                       ✓ Installation Plan:
                     </Typography>
                     {roomAnalysis.recommendation.distribution.map((dist, idx) => (
@@ -379,10 +382,10 @@ const HeaterPlanningTool = ({
             <Box sx={{ 
               p: 4, 
               textAlign: 'center', 
-              bgcolor: 'grey.50', 
+              bgcolor: 'background.default', 
               borderRadius: 1 
             }}>
-              <LocalFireDepartmentIcon sx={{ fontSize: 60, color: 'grey.400', mb: 2 }} />
+              <LocalFireDepartmentIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
               <Typography variant="h6" color="textSecondary" gutterBottom>
                 Select a room to analyze heating capacity
               </Typography>
@@ -393,7 +396,7 @@ const HeaterPlanningTool = ({
           )}
 
           {/* NEC Reference */}
-          <Box sx={{ p: 2, bgcolor: 'info.lighter', borderRadius: 1, borderLeft: '3px solid #2196f3' }}>
+          <Box sx={{ p: 2, bgcolor: alpha(theme.palette.info.main, 0.1), borderRadius: 1, borderLeft: '3px solid', borderColor: 'info.main' }}>
             <Typography variant="subtitle2" gutterBottom>
               📘 NEC Guidelines for Electric Heating:
             </Typography>

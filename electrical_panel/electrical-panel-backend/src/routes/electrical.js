@@ -568,7 +568,8 @@ router.put('/components/:id', (req, res) => {
     properties = {},
     circuit_id,
     wattage = 0,
-    voltage
+    voltage,
+    floor_plan_id
   } = req.body;
 
   // Log the incoming request
@@ -623,6 +624,11 @@ router.put('/components/:id', (req, res) => {
   if (circuit_id !== undefined) {
     fields.push('circuit_id = ?');
     values.push(circuit_id);
+  }
+  if (floor_plan_id !== undefined) {
+    fields.push('floor_plan_id = ?');
+    values.push(floor_plan_id);
+    console.log(`🔧 Setting floor_plan_id to: ${floor_plan_id}`);
   }
 
   if (fields.length === 0) {
